@@ -1,7 +1,7 @@
-struct PointOfInterest: Identifiable, Codable, Hashable, Sendable {
+struct PointOfInterest: Identifiable, Hashable, Sendable {
     let id: String
     let name: String
-    let category: String
+    let address: String?
     let latitude: Double
     let longitude: Double
 }

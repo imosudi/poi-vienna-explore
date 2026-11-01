@@ -1,37 +1,124 @@
-//
-//  poi_vienna_explorerTests.swift
-//  poi-vienna-explorerTests
-//
-//  Created by Isiaka Mosudi on 01.11.26.
-//
-
+import Foundation
 import XCTest
+@testable import poi_vienna_explorer
 
+@MainActor
 final class poi_vienna_explorerTests: XCTestCase {
+    func testFetchMapsGeoJSONIntoPlaceModels() async throws {
+        let service = makeService(statusCode: 200, body: Data(validFeatureCollection.utf8))
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.count, 1)
+        XCTAssertEqual(places[0].id, "SEHENSWUERDIGOGD.640963")
+        XCTAssertEqual(places[0].name, "Ankeruhr")
+        XCTAssertEqual(places[0].address, "Hoher Markt 10/")
+        XCTAssertEqual(places[0].latitude, 48.21076056)
+        XCTAssertEqual(places[0].longitude, 16.37367575)
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+    func testRejectsUnsuccessfulHTTPStatus() async throws {
+        let service = makeService(statusCode: 503, body: Data())
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-        // XCTest Documentation
-        // https://developer.apple.com/documentation/xctest
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        measure {
-            // Put the code you want to measure the time of here.
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected an HTTP status error.")
+        } catch let error as ViennaPOIServiceError {
+            XCTAssertEqual(error, .httpStatusCode(503))
         }
     }
 
+    func testRejectsMalformedJSON() async throws {
+        let service = makeService(statusCode: 200, body: Data("not JSON".utf8))
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected a malformed-response error.")
+        } catch let error as ViennaPOIServiceError {
+            XCTAssertEqual(error, .malformedResponse)
+        }
+    }
+
+    func testRejectsInvalidCoordinates() async throws {
+        let invalidFeatureCollection = validFeatureCollection.replacingOccurrences(
+            of: "\"coordinates\": [16.37367575, 48.21076056]",
+            with: "\"coordinates\": [181, 48.21076056]"
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(invalidFeatureCollection.utf8)
+        )
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected a malformed-response error.")
+        } catch let error as ViennaPOIServiceError {
+            XCTAssertEqual(error, .malformedResponse)
+        }
+    }
+
+    func testPropagatesCancellation() async throws {
+        let service = ViennaPOIService { _ in
+            throw CancellationError()
+        }
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected cancellation to propagate.")
+        } catch is CancellationError {
+            // Expected: callers retain control over task cancellation.
+        }
+    }
+
+    func testPropagatesNetworkFailure() async throws {
+        let service = ViennaPOIService { _ in
+            throw URLError(.notConnectedToInternet)
+        }
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected the network error to propagate.")
+        } catch let error as URLError {
+            XCTAssertEqual(error.code, .notConnectedToInternet)
+        }
+    }
+
+    private func makeService(statusCode: Int, body: Data) -> ViennaPOIService {
+        let expectedEndpoint = ViennaPOIService.endpoint
+        return ViennaPOIService { request in
+            guard request.url == expectedEndpoint,
+                  request.value(forHTTPHeaderField: "Accept") == "application/json",
+                  let url = request.url,
+                  let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: statusCode,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                  )
+            else {
+                throw URLError(.badURL)
+            }
+            return (body, response)
+        }
+    }
+
+    private let validFeatureCollection = """
+    {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "id": "SEHENSWUERDIGOGD.640963",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [16.37367575, 48.21076056]
+          },
+          "properties": {
+            "NAME": "Ankeruhr",
+            "ADRESSE": "Hoher Markt 10/"
+          }
+        }
+      ]
+    }
+    """
 }
