@@ -1,37 +1,415 @@
-//
-//  poi_vienna_explorerTests.swift
-//  poi-vienna-explorerTests
-//
-//  Created by Isiaka Mosudi on 01.11.26.
-//
-
+import Foundation
 import XCTest
+@testable import poi_vienna_explorer
 
+@MainActor
 final class poi_vienna_explorerTests: XCTestCase {
+    func testFetchMapsGeoJSONIntoPlaceModels() async throws {
+        let service = makeService(statusCode: 200, body: try sourceFixture())
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.count, 2)
+        XCTAssertEqual(places[0].id, "SEHENSWUERDIGOGD.640963")
+        XCTAssertEqual(places[0].name, "Ankeruhr")
+        XCTAssertEqual(places[0].address, "Hoher Markt 10/")
+        XCTAssertEqual(places[0].latitude, 48.21076056)
+        XCTAssertEqual(places[0].longitude, 16.37367575)
+        XCTAssertEqual(places[0].informationURL?.absoluteString, "http://www.wien.info/article.asp?IDArticle=2018")
+        XCTAssertEqual(places[0].thumbnailURL?.absoluteString, "https://www.wien.gv.at/viennagis/bubble/ankeruhr.jpg")
+        XCTAssertEqual(places[1].name, "Friedhof St. Marx")
+        XCTAssertEqual(places[1].latitude, 48.18297383)
+        XCTAssertEqual(places[1].longitude, 16.40167012)
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    func testDuplicateIdentifiersProduceOnlyOnePlace() async throws {
+        let duplicatedFeature = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        ).replacingOccurrences(
+            of: "\"id\": \"SEHENSWUERDIGOGD.640964\"",
+            with: "\"id\": \"SEHENSWUERDIGOGD.640963\""
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(duplicatedFeature.utf8)
+        )
+
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.map(\.id), ["SEHENSWUERDIGOGD.640963"])
+        XCTAssertEqual(places.first?.name, "Ankeruhr")
     }
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-        // XCTest Documentation
-        // https://developer.apple.com/documentation/xctest
+    func testSearchFiltersByNameAndAddressWithoutFetchingAgain() async throws {
+        let provider = CountingPOIProvider(places: [
+            PointOfInterest(
+                id: "1",
+                name: "Ankeruhr",
+                address: "Hoher Markt 10/",
+                informationURL: nil,
+                thumbnailURL: nil,
+                latitude: 48.21076056,
+                longitude: 16.37367575
+            ),
+            PointOfInterest(
+                id: "2",
+                name: "Friedhof St. Marx",
+                address: "Leberstraße 6-8",
+                informationURL: nil,
+                thumbnailURL: nil,
+                latitude: 48.18297383,
+                longitude: 16.40167012
+            )
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        model.searchText = "leberstraße"
+
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["2"])
+
+        let requestCount = provider.requestCount
+        XCTAssertEqual(requestCount, 1)
     }
 
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        measure {
-            // Put the code you want to measure the time of here.
+    func testRefreshReplacesPlacesAfterSuccessfulFetch() async throws {
+        let original = makePlace(id: "1", name: "Original")
+        let updated = makePlace(id: "2", name: "Updated")
+        let provider = RefreshPOIProvider(outcomes: [
+            .success([original]),
+            .success([updated])
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        await model.refresh()
+
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["2"])
+        XCTAssertNil(model.refreshError)
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(provider.requestCount, 2)
+    }
+
+    func testRefreshFailurePreservesExistingPlacesAndReportsError() async throws {
+        let original = makePlace(id: "1", name: "Original")
+        let provider = RefreshPOIProvider(outcomes: [
+            .success([original]),
+            .failure
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        await model.refresh()
+
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["1"])
+        XCTAssertTrue(model.refreshError?.contains("Could not refresh places") == true)
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(provider.requestCount, 2)
+    }
+
+    func testRefreshShowsLoadingAndPreventsOverlappingRequests() async throws {
+        let original = makePlace(id: "1", name: "Original")
+        let updated = makePlace(id: "2", name: "Updated")
+        let provider = RefreshPOIProvider(
+            outcomes: [.success([original]), .success([updated])],
+            delayNanoseconds: 80_000_000
+        )
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        let refreshTask = Task { await model.refresh() }
+        try await Task.sleep(nanoseconds: 20_000_000)
+
+        XCTAssertTrue(model.isRefreshing)
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["1"])
+
+        await model.refresh()
+        XCTAssertEqual(provider.requestCount, 2)
+
+        await refreshTask.value
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["2"])
+    }
+
+    func testRefreshKeepsActiveSearchAndFiltersNewResults() async throws {
+        let provider = RefreshPOIProvider(outcomes: [
+            .success([makePlace(id: "1", name: "First")]),
+            .success([
+                makePlace(id: "2", name: "Second", address: "Market 1"),
+                makePlace(id: "3", name: "Third", address: "Park 2")
+            ])
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        model.searchText = "market"
+        await model.refresh()
+
+        XCTAssertEqual(model.searchText, "market")
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["2"])
+        XCTAssertEqual(provider.requestCount, 2)
+    }
+
+    func testRejectsUnsuccessfulHTTPStatus() async throws {
+        let service = makeService(statusCode: 503, body: Data())
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected an HTTP status error.")
+        } catch let error as ViennaPOIServiceError {
+            XCTAssertEqual(error, .httpStatusCode(503))
         }
     }
 
+    func testRejectsMalformedJSON() async throws {
+        let service = makeService(statusCode: 200, body: Data("not JSON".utf8))
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected a malformed-response error.")
+        } catch let error as ViennaPOIServiceError {
+            XCTAssertEqual(error, .malformedResponse)
+        }
+    }
+
+    func testSkipsFeatureWithInvalidCoordinates() async throws {
+        let invalidFeatureCollection = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        ).replacingOccurrences(
+            of: "\"coordinates\": [16.37367575, 48.21076056]",
+            with: "\"coordinates\": [181, 48.21076056]"
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(invalidFeatureCollection.utf8)
+        )
+
+        let places = try await service.fetchPointsOfInterest()
+        XCTAssertEqual(places.map(\.id), ["SEHENSWUERDIGOGD.640964"])
+    }
+
+    func testSkipsFeatureWithMalformedCoordinateRepresentation() async throws {
+        let sampleWithMalformedCoordinates = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        ).replacingOccurrences(
+            of: "\"coordinates\": [16.40167012, 48.18297383]",
+            with: "\"coordinates\": [\"unknown\", 48.18297383]"
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(sampleWithMalformedCoordinates.utf8)
+        )
+
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.map(\.id), ["SEHENSWUERDIGOGD.640963"])
+    }
+
+    func testRejectsCollectionWhenNoFeatureCanBeDisplayed() async throws {
+        let sampleWithoutDisplayableCoordinates = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        )
+        .replacingOccurrences(
+            of: "\"coordinates\": [16.37367575, 48.21076056]",
+            with: "\"coordinates\": [181, 48.21076056]"
+        )
+        .replacingOccurrences(
+            of: "\"coordinates\": [16.40167012, 48.18297383]",
+            with: "\"coordinates\": [181, 48.18297383]"
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(sampleWithoutDisplayableCoordinates.utf8)
+        )
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected a malformed-response error.")
+        } catch let error as ViennaPOIServiceError {
+            XCTAssertEqual(error, .malformedResponse)
+        }
+    }
+
+    func testUsesObjectIDWhenFeatureIdentifierIsMissing() async throws {
+        let sampleWithoutFeatureID = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        ).replacingOccurrences(of: "\"id\": \"SEHENSWUERDIGOGD.640963\",\n", with: "")
+        let service = makeService(statusCode: 200, body: Data(sampleWithoutFeatureID.utf8))
+
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.first?.id, "640963")
+    }
+
+    func testMissingOptionalAttributesDoNotDiscardPlace() async throws {
+        let sampleWithoutOptionalAttributes = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        )
+        .replacingOccurrences(of: "\"ADRESSE\": \"Hoher Markt 10/\",\n", with: "")
+        .replacingOccurrences(
+            of: "\"WEITERE_INF\": \"http://www.wien.info/article.asp?IDArticle=2018\",\n",
+            with: ""
+        )
+        .replacingOccurrences(
+            of: "\"THUMBNAIL\": \"https://www.wien.gv.at/viennagis/bubble/ankeruhr.jpg\",\n",
+            with: ""
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(sampleWithoutOptionalAttributes.utf8)
+        )
+
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.first?.name, "Ankeruhr")
+        XCTAssertNil(places.first?.address)
+        XCTAssertNil(places.first?.informationURL)
+        XCTAssertNil(places.first?.thumbnailURL)
+    }
+
+    func testInvalidOptionalURLIsIgnored() async throws {
+        let sampleWithInvalidThumbnail = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        ).replacingOccurrences(
+            of: "\"THUMBNAIL\": \"https://www.wien.gv.at/viennagis/bubble/ankeruhr.jpg\"",
+            with: "\"THUMBNAIL\": \"javascript:alert(1)\""
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(sampleWithInvalidThumbnail.utf8)
+        )
+
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.first?.name, "Ankeruhr")
+        XCTAssertNil(places.first?.thumbnailURL)
+    }
+
+    func testPropagatesCancellation() async throws {
+        let service = ViennaPOIService { _ in
+            throw CancellationError()
+        }
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected cancellation to propagate.")
+        } catch is CancellationError {
+            // Expected: callers retain control over task cancellation.
+        }
+    }
+
+    func testPropagatesNetworkFailure() async throws {
+        let service = ViennaPOIService { _ in
+            throw URLError(.notConnectedToInternet)
+        }
+
+        do {
+            _ = try await service.fetchPointsOfInterest()
+            XCTFail("Expected the network error to propagate.")
+        } catch let error as URLError {
+            XCTAssertEqual(error.code, .notConnectedToInternet)
+        }
+    }
+
+    private func makeService(statusCode: Int, body: Data) -> ViennaPOIService {
+        let expectedEndpoint = ViennaPOIService.endpoint
+        return ViennaPOIService { request in
+            guard request.url == expectedEndpoint,
+                  request.value(forHTTPHeaderField: "Accept") == "application/json",
+                  let url = request.url,
+                  let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: statusCode,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                  )
+            else {
+                throw URLError(.badURL)
+            }
+            return (body, response)
+        }
+    }
+
+    private func sourceFixture() throws -> Data {
+        let fixtureURL = try XCTUnwrap(
+            Bundle(for: Self.self).url(
+                forResource: "vienna-sights-sample",
+                withExtension: "json"
+            )
+        )
+        return try Data(contentsOf: fixtureURL)
+    }
+
+    private func loadedPlaceIDs(in model: CatalogueModel) -> [String]? {
+        guard case .loaded(let places) = model.state else {
+            XCTFail("Expected the catalogue to retain loaded places.")
+            return nil
+        }
+        return places.map(\.id)
+    }
+
+    private func makePlace(
+        id: String,
+        name: String,
+        address: String? = nil
+    ) -> PointOfInterest {
+        PointOfInterest(
+            id: id,
+            name: name,
+            address: address,
+            informationURL: nil,
+            thumbnailURL: nil,
+            latitude: 48.2,
+            longitude: 16.3
+        )
+    }
+
+    @MainActor
+    private final class CountingPOIProvider: PointOfInterestProviding {
+        private let places: [PointOfInterest]
+        private(set) var requestCount = 0
+
+        init(places: [PointOfInterest]) {
+            self.places = places
+        }
+
+        func fetchPointsOfInterest() async throws -> [PointOfInterest] {
+            requestCount += 1
+            return places
+        }
+    }
+
+    @MainActor
+    private final class RefreshPOIProvider: PointOfInterestProviding {
+        enum Outcome {
+            case success([PointOfInterest])
+            case failure
+        }
+
+        private let outcomes: [Outcome]
+        private let delayNanoseconds: UInt64
+        private(set) var requestCount = 0
+
+        init(outcomes: [Outcome], delayNanoseconds: UInt64 = 0) {
+            self.outcomes = outcomes
+            self.delayNanoseconds = delayNanoseconds
+        }
+
+        func fetchPointsOfInterest() async throws -> [PointOfInterest] {
+            let requestIndex = requestCount
+            requestCount += 1
+            if delayNanoseconds > 0 {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            }
+            guard outcomes.indices.contains(requestIndex) else {
+                throw URLError(.resourceUnavailable)
+            }
+            switch outcomes[requestIndex] {
+            case .success(let places):
+                return places
+            case .failure:
+                throw URLError(.notConnectedToInternet)
+            }
+        }
+    }
 }

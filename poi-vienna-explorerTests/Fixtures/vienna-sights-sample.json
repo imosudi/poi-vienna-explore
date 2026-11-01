@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "SEHENSWUERDIGOGD.640963",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [16.37367575, 48.21076056]
+      },
+      "geometry_name": "SHAPE",
+      "properties": {
+        "OBJECTID": 640963,
+        "NAME": "Ankeruhr",
+        "ADRESSE": "Hoher Markt 10/",
+        "WEITERE_INF": "http://www.wien.info/article.asp?IDArticle=2018",
+        "THUMBNAIL": "https://www.wien.gv.at/viennagis/bubble/ankeruhr.jpg",
+        "SE_ANNO_CAD_DATA": null
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SEHENSWUERDIGOGD.640964",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [16.40167012, 48.18297383]
+      },
+      "geometry_name": "SHAPE",
+      "properties": {
+        "OBJECTID": 640964,
+        "NAME": "Friedhof St. Marx",
+        "ADRESSE": "Leberstraße 6-8",
+        "WEITERE_INF": "http://www.wien.gv.at/umwelt/parks/anlagen/friedhof-st-marx.html",
+        "THUMBNAIL": "https://www.wien.gv.at/viennagis/bubble/stmarx.jpg",
+        "SE_ANNO_CAD_DATA": null
+      }
+    }
+  ]
+}
