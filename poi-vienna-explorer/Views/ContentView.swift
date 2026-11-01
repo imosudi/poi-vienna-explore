@@ -13,7 +13,7 @@ struct ContentView: View {
             ContentUnavailableView(
                 "Vienna POI Explorer",
                 systemImage: "map",
-                description: Text("The app foundation is ready for the next milestone.")
+                description: Text("Your guide to Vienna is coming soon.")
             )
             .navigationTitle("Explore Vienna")
         }
