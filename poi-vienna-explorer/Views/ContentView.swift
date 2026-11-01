@@ -8,29 +8,51 @@
 import SwiftUI
 
 struct ContentView: View {
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Spacer()
+
+                ContentUnavailableView(
+                    "Vienna POI Explorer",
+                    systemImage: "map",
+                    description: Text("Your guide to Vienna is coming soon.")
+                )
+
+                NavigationLink {
+                    POICatalogueView()
+                } label: {
+                    Label("Browse places", systemImage: "list.bullet")
+                        .frame(maxWidth: 240)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Spacer()
+            }
+            .navigationTitle("Explore Vienna")
+            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .safeAreaInset(edge: .bottom) {
+                CopyrightFooter()
+            }
+        }
+    }
+}
+
+private struct POICatalogueView: View {
     @State private var catalogue = CatalogueModel()
 
     var body: some View {
-        NavigationStack {
-            catalogueContent
-                .navigationTitle("Explore Vienna")
-                .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .safeAreaInset(edge: .bottom) {
-                    Text("Mosudi Isiaka O., FHTW © 2026")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background {
-                            Color(uiColor: .systemBackground)
-                                .ignoresSafeArea(edges: .bottom)
-                        }
-                }
-                .task {
-                    await catalogue.loadIfNeeded()
-                }
-        }
+        catalogueContent
+            .navigationTitle("Vienna sights")
+            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .safeAreaInset(edge: .bottom) {
+                CopyrightFooter()
+            }
+            .task {
+                await catalogue.loadIfNeeded()
+            }
     }
 
     @ViewBuilder
@@ -82,6 +104,20 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
             }
         }
+    }
+}
+
+private struct CopyrightFooter: View {
+    var body: some View {
+        Text("Mosudi Isiaka O., FHTW © 2026")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background {
+                Color(uiColor: .systemBackground)
+                    .ignoresSafeArea(edges: .bottom)
+            }
     }
 }
 
