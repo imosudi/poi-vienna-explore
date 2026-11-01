@@ -231,38 +231,21 @@ private struct POIMapView: View {
                             latitude: annotation.latitude,
                             longitude: annotation.longitude
                         )
-                        let distanceText = locationService.location.flatMap { location in
-                            POIDistanceCalculator.distanceMeters(
-                                from: location.coordinate,
-                                to: place
-                            )
-                        }.flatMap { meters in
-                            POIDistanceFormatter.formattedDistance(meters: meters)
-                        }
+                        let distanceText = distanceText(to: place)
+                        let markerStyle = POIMarkerStyle(pointOfInterest: place)
+                        let isSelected = selectedAnnotation?.id == annotation.id
 
                         Annotation(
                             annotation.name,
                             coordinate: annotationCoordinate,
                             anchor: .bottom
                         ) {
-                            let markerStyle = POIMarkerStyle(pointOfInterest: place)
-                            let isSelected = selectedAnnotation?.id == annotation.id
-
-                            VStack(spacing: 4) {
-                                if isSelected {
-                                    POIAnnotationCallout(
-                                        details: annotation,
-                                        distanceText: distanceText
-                                    )
-                                }
-
-                                POIMarkerView(style: markerStyle, isSelected: isSelected)
-                                    .accessibilityLabel(
-                                        "\(annotation.name), \(markerStyle.accessibilityDescription)"
-                                    )
-                            }
-                            .contentShape(Rectangle())
-                            .accessibilityIdentifier("poi-annotation-\(annotation.id)")
+                            POIMapAnnotationView(
+                                details: annotation,
+                                markerStyle: markerStyle,
+                                isSelected: isSelected,
+                                distanceText: distanceText
+                            )
                         }
                         .annotationTitles(.hidden)
                         .tag(annotation)
@@ -298,6 +281,42 @@ private struct POIMapView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    private func distanceText(to place: PointOfInterest) -> String? {
+        guard let location = locationService.location,
+              let meters = POIDistanceCalculator.distanceMeters(
+                from: location.coordinate,
+                to: place
+              )
+        else {
+            return nil
+        }
+        return POIDistanceFormatter.formattedDistance(meters: meters)
+    }
+}
+
+private struct POIMapAnnotationView: View {
+    let details: POIAnnotationDetails
+    let markerStyle: POIMarkerStyle
+    let isSelected: Bool
+    let distanceText: String?
+
+    private var accessibilityLabel: String {
+        details.name + ", " + markerStyle.accessibilityDescription
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            if isSelected {
+                POIAnnotationCallout(details: details, distanceText: distanceText)
+            }
+
+            POIMarkerView(style: markerStyle, isSelected: isSelected)
+                .accessibilityLabel(Text(accessibilityLabel))
+        }
+        .contentShape(Rectangle())
+        .accessibilityIdentifier("poi-annotation-\(details.id)")
     }
 }
 

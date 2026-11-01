@@ -13,7 +13,7 @@ final class UserLocationService: NSObject, ObservableObject, CLLocationManagerDe
     override init() {
         let locationManager = CLLocationManager()
         self.locationManager = locationManager
-        authorizationStatus = locationManager.authorizationStatus
+        authorizationStatus = .notDetermined
         super.init()
         locationManager.delegate = self
     }
@@ -45,12 +45,6 @@ final class UserLocationService: NSObject, ObservableObject, CLLocationManagerDe
     }
 
     func requestLocationWhenInUseIfNeeded() {
-        authorizationStatus = locationManager.authorizationStatus
-        guard CLLocationManager.locationServicesEnabled() else {
-            errorMessage = "Location Services are turned off."
-            return
-        }
-
         switch authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
@@ -71,10 +65,6 @@ final class UserLocationService: NSObject, ObservableObject, CLLocationManagerDe
         authorizationStatus = manager.authorizationStatus
         switch authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            guard CLLocationManager.locationServicesEnabled() else {
-                errorMessage = "Location Services are turned off."
-                return
-            }
             startUpdatingLocation()
         case .notDetermined:
             break
