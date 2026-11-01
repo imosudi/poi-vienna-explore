@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 struct PointOfInterest: Identifiable, Hashable, Sendable {
     let id: String
@@ -8,6 +9,53 @@ struct PointOfInterest: Identifiable, Hashable, Sendable {
     let thumbnailURL: URL?
     let latitude: Double
     let longitude: Double
+}
+
+enum POIDistanceCalculator {
+    static func distanceMeters(
+        from userCoordinate: CLLocationCoordinate2D,
+        to pointOfInterest: PointOfInterest
+    ) -> CLLocationDistance? {
+        let poiCoordinate = CLLocationCoordinate2D(
+            latitude: pointOfInterest.latitude,
+            longitude: pointOfInterest.longitude
+        )
+        guard isValid(userCoordinate), isValid(poiCoordinate) else { return nil }
+
+        let userLocation = CLLocation(
+            latitude: userCoordinate.latitude,
+            longitude: userCoordinate.longitude
+        )
+        let poiLocation = CLLocation(
+            latitude: poiCoordinate.latitude,
+            longitude: poiCoordinate.longitude
+        )
+        let distance = userLocation.distance(from: poiLocation)
+        return distance.isFinite ? distance : nil
+    }
+
+    static func isValid(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        coordinate.latitude.isFinite
+            && coordinate.longitude.isFinite
+            && (-90...90).contains(coordinate.latitude)
+            && (-180...180).contains(coordinate.longitude)
+    }
+}
+
+enum POIDistanceFormatter {
+    static func formattedDistance(meters: CLLocationDistance) -> String? {
+        guard meters.isFinite, meters >= 0 else { return nil }
+
+        if meters.rounded() < 1_000 {
+            return "\(Int(meters.rounded())) m"
+        }
+
+        return String(
+            format: "%.1f km",
+            locale: Locale(identifier: "en_US_POSIX"),
+            meters / 1_000
+        )
+    }
 }
 
 enum POIMarkerStyle: String, Equatable, Sendable {

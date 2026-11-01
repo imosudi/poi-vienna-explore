@@ -15,7 +15,7 @@ A native iOS app built with SwiftUI. The app loads Vienna sightseeing locations 
 
 Open `poi-vienna-explorer.xcodeproj` in Xcode and run the `poi-vienna-explorer` scheme on an iOS simulator or device. The deployment target is iOS 17.0.
 
-The app starts loading the dataset on launch, and the home screen links to the sights catalogue. The catalogue filters loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Select a place to open a MapKit view centered on that location. Map annotations are selectable and show the place name plus available address, thumbnail, and information link. Markers are blue when the dataset provides a valid information link and neutral gray when it does not; a white outline highlights the selected marker. This dataset has no category or operational-status field, so marker colour does not imply either. Use the Refresh button or pull down on the list to request updated records. A failed refresh leaves the previous results visible. Duplicate identifiers and records without usable names or coordinates are omitted.
+The app starts loading the dataset on launch, and the home screen links to the sights catalogue. The catalogue filters loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Select a place to open a MapKit view centered on that location. The map requests location access only while in use, displays the user's location when authorized, and shows the distance to the selected place. Location updates stop when leaving the map; the app does not request background location access. Map annotations are selectable and show the place name plus available address, thumbnail, distance, and information link. Markers are blue when the dataset provides a valid information link and neutral gray when it does not; a white outline highlights the selected marker. This dataset has no category or operational-status field, so marker colour does not imply either. Use the Refresh button or pull down on the list to request updated records. A failed refresh leaves the previous results visible. Duplicate identifiers and records without usable names or coordinates are omitted.
 
 ## Vienna places data
 
@@ -33,8 +33,11 @@ Features without a stable identifier, a non-empty name, a `Point` geometry, or f
 
 ### POI map
 
+![Searchable list of POIs](screenshots/debug-screenshot-landscape_poi.png)
+
 ![POI map and selected place in landscape](screenshots/debug-screenshot-map-landscape.png)
 
 ![POI map and selected place in portrait](screenshots/debug-screenshot-map.png)
 
-![POI map and selected place, additional capture](screenshots/debug-screenshot-landscape_poi.png)
+
+ 

@@ -163,6 +163,7 @@ private struct POIMapView: View {
     let selectedPOI: PointOfInterest
     let places: [PointOfInterest]
     @State private var selectedAnnotation: POIAnnotationDetails?
+    @StateObject private var locationService = UserLocationService()
 
     init(selectedPOI: PointOfInterest, places: [PointOfInterest]) {
         self.selectedPOI = selectedPOI
@@ -202,12 +203,24 @@ private struct POIMapView: View {
                     ),
                     selection: $selectedAnnotation
                 ) {
+                    if locationService.isAuthorized {
+                        UserAnnotation()
+                    }
+
                     ForEach(places) { place in
                         let annotation = POIAnnotationDetails(pointOfInterest: place)
                         let annotationCoordinate = CLLocationCoordinate2D(
                             latitude: annotation.latitude,
                             longitude: annotation.longitude
                         )
+                        let distanceText = locationService.location.flatMap { location in
+                            POIDistanceCalculator.distanceMeters(
+                                from: location.coordinate,
+                                to: place
+                            )
+                        }.flatMap { meters in
+                            POIDistanceFormatter.formattedDistance(meters: meters)
+                        }
 
                         Annotation(
                             annotation.name,
@@ -219,7 +232,10 @@ private struct POIMapView: View {
 
                             VStack(spacing: 4) {
                                 if isSelected {
-                                    POIAnnotationCallout(details: annotation)
+                                    POIAnnotationCallout(
+                                        details: annotation,
+                                        distanceText: distanceText
+                                    )
                                 }
 
                                 POIMarkerView(style: markerStyle, isSelected: isSelected)
@@ -233,6 +249,24 @@ private struct POIMapView: View {
                         .annotationTitles(.hidden)
                         .tag(annotation)
                     }
+                }
+                .overlay(alignment: .top) {
+                    if let statusMessage = locationService.statusMessage {
+                        Text(statusMessage)
+                            .font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(.regularMaterial, in: Capsule())
+                            .padding()
+                            .accessibilityIdentifier("location-status")
+                    }
+                }
+                .onAppear {
+                    locationService.requestLocationWhenInUseIfNeeded()
+                }
+                .onDisappear {
+                    locationService.stopUpdatingLocation()
                 }
             } else {
                 ContentUnavailableView(
@@ -279,6 +313,7 @@ private struct POIMarkerView: View {
 
 private struct POIAnnotationCallout: View {
     let details: POIAnnotationDetails
+    let distanceText: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -289,6 +324,13 @@ private struct POIAnnotationCallout: View {
                 Label(address, systemImage: "mappin")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            }
+
+            if let distanceText {
+                Label("\(distanceText) away", systemImage: "location")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("poi-distance-\(details.id)")
             }
 
             if let thumbnailURL = details.thumbnailURL {

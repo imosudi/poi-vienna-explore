@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 import XCTest
 @testable import poi_vienna_explorer
 
@@ -78,6 +79,62 @@ final class poi_vienna_explorerTests: XCTestCase {
             POIMarkerStyle(pointOfInterest: placeWithoutLink).accessibilityDescription,
             "No information link listed"
         )
+    }
+
+    func testDistanceUsesGreatCircleDistanceForKnownCoordinates() throws {
+        let poi = PointOfInterest(
+            id: "equator-east",
+            name: "One degree east",
+            address: nil,
+            informationURL: nil,
+            thumbnailURL: nil,
+            latitude: 0,
+            longitude: 1
+        )
+        let userCoordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+
+        let distance = try XCTUnwrap(
+            POIDistanceCalculator.distanceMeters(
+                from: userCoordinate,
+                to: poi
+            )
+        )
+
+        XCTAssertEqual(distance, 111_195, accuracy: 100)
+    }
+
+    func testDistanceRejectsInvalidUserAndPOICoordinates() {
+        let validUserCoordinate = CLLocationCoordinate2D(latitude: 48.2, longitude: 16.3)
+        let invalidUserCoordinate = CLLocationCoordinate2D(latitude: 91, longitude: 16.3)
+        let invalidPOI = PointOfInterest(
+            id: "invalid",
+            name: "Invalid coordinate",
+            address: nil,
+            informationURL: nil,
+            thumbnailURL: nil,
+            latitude: 48.2,
+            longitude: .infinity
+        )
+
+        XCTAssertNil(
+            POIDistanceCalculator.distanceMeters(
+                from: invalidUserCoordinate,
+                to: makePlace(id: "valid", name: "Valid coordinate")
+            )
+        )
+        XCTAssertNil(
+            POIDistanceCalculator.distanceMeters(
+                from: validUserCoordinate,
+                to: invalidPOI
+            )
+        )
+    }
+
+    func testDistanceFormattingUsesMetresAndKilometres() {
+        XCTAssertEqual(POIDistanceFormatter.formattedDistance(meters: 245), "245 m")
+        XCTAssertEqual(POIDistanceFormatter.formattedDistance(meters: 1_450), "1.5 km")
+        XCTAssertEqual(POIDistanceFormatter.formattedDistance(meters: -.infinity), nil)
+        XCTAssertEqual(POIDistanceFormatter.formattedDistance(meters: -1), nil)
     }
 
     func testDuplicateIdentifiersProduceOnlyOnePlace() async throws {
