@@ -5,6 +5,7 @@
 //  Created by Isiaka Mosudi on 01.11.26.
 //
 
+import MapKit
 import SwiftUI
 
 struct ContentView: View {
@@ -162,6 +163,79 @@ private struct CopyrightFooter: View {
                 Color(uiColor: .systemBackground)
                     .ignoresSafeArea(edges: .bottom)
             }
+    }
+}
+
+private struct POIMapView: View {
+    let selectedPOI: PointOfInterest
+
+    private var coordinate: CLLocationCoordinate2D? {
+        let latitude = selectedPOI.latitude
+        let longitude = selectedPOI.longitude
+
+        guard latitude.isFinite,
+              longitude.isFinite,
+              (-90...90).contains(latitude),
+              (-180...180).contains(longitude)
+        else {
+            return nil
+        }
+
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    var body: some View {
+        Group {
+            if let coordinate {
+                Map(
+                    initialPosition: .region(
+                        MKCoordinateRegion(
+                            center: coordinate,
+                            span: MKCoordinateSpan(
+                                latitudeDelta: 0.01,
+                                longitudeDelta: 0.01
+                            )
+                        )
+                    )
+                ) {
+                    Marker(selectedPOI.name, coordinate: coordinate)
+                }
+                .safeAreaInset(edge: .bottom) {
+                    poiDetails
+                }
+            } else {
+                ContentUnavailableView(
+                    "Location unavailable",
+                    systemImage: "mappin.slash",
+                    description: Text("This place does not have valid map coordinates.")
+                )
+            }
+        }
+        .navigationTitle(selectedPOI.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    private var poiDetails: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(selectedPOI.name)
+                .font(.headline)
+
+            if let address = selectedPOI.address {
+                Label(address, systemImage: "mappin")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let informationURL = selectedPOI.informationURL {
+                Link("More information", destination: informationURL)
+                    .font(.subheadline)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.regularMaterial)
     }
 }
 
