@@ -8,14 +8,14 @@ A native iOS app built with SwiftUI. The app loads Vienna sightseeing locations 
 - `poi-vienna-explorer/AppState/` — catalogue loading state
 - `poi-vienna-explorer/Models/` — domain models
 - `poi-vienna-explorer/Services/` — data service interfaces
-- `poi-vienna-explorer/Views/` — SwiftUI screens
+- `poi-vienna-explorer/Views/` — SwiftUI screens, including the POI map destination
 - `poi-vienna-explorer/Assets.xcassets/` — app assets
 - `poi-vienna-explorerTests/` — unit tests
 - `poi-vienna-explorerUITests/` — UI tests
 
 Open `poi-vienna-explorer.xcodeproj` in Xcode and run the `poi-vienna-explorer` scheme on an iOS simulator or device. The deployment target is iOS 17.0.
 
-The app starts loading the dataset on launch, and the home screen links to the sights catalogue. The catalogue filters loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Use the Refresh button or pull down on the list to request updated records. A failed refresh leaves the previous results visible. Duplicate identifiers and records without usable names or coordinates are omitted.
+The app starts loading the dataset on launch, and the home screen links to the sights catalogue. The catalogue filters loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Select a place to open a MapKit view centered on that location, with its name, address, and available information link. Use the Refresh button or pull down on the list to request updated records. A failed refresh leaves the previous results visible. Duplicate identifiers and records without usable names or coordinates are omitted.
 
 ## Vienna places data
 
