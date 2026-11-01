@@ -9,11 +9,17 @@ A native iOS app built with SwiftUI. The app loads Vienna sightseeing locations 
 - `poi-vienna-explorer/Models/` — domain models
 - `poi-vienna-explorer/Services/` — data service interfaces
 - `poi-vienna-explorer/Views/` — SwiftUI screens, including the POI map destination
-- `poi-vienna-explorer/Assets.xcassets/` — app assets
+- `poi-vienna-explorer/Assets.xcassets/` — app icon and categorized branding, icon, marker, and UI image sets
 - `poi-vienna-explorerTests/` — unit tests
 - `poi-vienna-explorerUITests/` — UI tests
 
 Open `poi-vienna-explorer.xcodeproj` in Xcode and run the `poi-vienna-explorer` scheme on an iOS simulator or device. The deployment target is iOS 17.0.
+
+## Branding assets
+
+The supplied PNG crops are stored in the Xcode asset catalog under `Branding`, `Icons`, `Markers`, and `UI`. The home screen uses the Vienna POI Explorer banner, browse card, and City of Vienna Open Data badge; the refresh action and map callout use the supplied refresh and more-details graphics. Individual icons, category markers, status indicators, and their reference strips are retained as image sets for future screens.
+
+The current sightseeing dataset does not identify transport, parking, charging, or operational availability, so those marker and status graphics are not used to classify map places. The app-icon crop is retained as branding artwork, but is not assigned to the platform `AppIcon` set: it is a small rounded raster crop rather than the full-bleed square artwork and required resolution needed for a production iOS app icon.
 
 The app starts loading the dataset on launch, and the home screen links to the sights catalogue. The catalogue filters loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Select a place to open a MapKit view centered on that location. The map requests location access only while in use, displays the user's location when authorized, and shows the distance to the selected place. Location updates stop when leaving the map; the app does not request background location access. Map annotations are selectable and show the place name plus available address, thumbnail, distance, and information link. Markers are blue when the dataset provides a valid information link and neutral gray when it does not; a white outline highlights the selected marker. This dataset has no category or operational-status field, so marker colour does not imply either. Use the Refresh button or pull down on the list to request updated records. A failed refresh leaves the previous results visible. Duplicate identifiers and records without usable names or coordinates are omitted.
 

@@ -13,24 +13,31 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Spacer()
+            ScrollView {
+                VStack(spacing: 24) {
+                    Image("BrandingHeaderBanner")
+                        .resizable()
+                        .scaledToFit()
+                        .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
 
-                ContentUnavailableView(
-                    "Vienna POI Explorer",
-                    systemImage: "map",
-                    description: Text("Your guide to Vienna is coming soon.")
-                )
+                    NavigationLink {
+                        POICatalogueView(catalogue: catalogue)
+                    } label: {
+                        Image("BrandingPromoCard")
+                            .resizable()
+                            .scaledToFit()
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Browse places in Vienna")
 
-                NavigationLink {
-                    POICatalogueView(catalogue: catalogue)
-                } label: {
-                    Label("Browse places", systemImage: "list.bullet")
-                        .frame(maxWidth: 240)
+                    Image("BrandingCityWienOpenDataBadge")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 360)
+                        .accessibilityLabel("City of Vienna Open Government Data")
                 }
-                .buttonStyle(.borderedProminent)
-
-                Spacer()
+                .frame(maxWidth: 680)
+                .padding()
             }
             .navigationTitle("Explore Vienna")
             .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
@@ -63,7 +70,14 @@ private struct POICatalogueView: View {
                             ProgressView()
                                 .accessibilityLabel("Refreshing places")
                         } else {
-                            Label("Refresh", systemImage: "arrow.clockwise")
+                            Label {
+                                Text("Refresh")
+                            } icon: {
+                                Image("IconsRefresh")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 18, height: 18)
+                            }
                         }
                     }
                     .disabled(catalogue.isRefreshing || !catalogue.hasLoadedPlaces)
@@ -164,12 +178,24 @@ private struct POIMapView: View {
     let places: [PointOfInterest]
     @State private var selectedAnnotation: POIAnnotationDetails?
     @StateObject private var locationService = UserLocationService()
+    @State private var mapPosition: MapCameraPosition
 
     init(selectedPOI: PointOfInterest, places: [PointOfInterest]) {
         self.selectedPOI = selectedPOI
         self.places = places
         _selectedAnnotation = State(
             initialValue: POIAnnotationDetails(pointOfInterest: selectedPOI)
+        )
+        _mapPosition = State(
+            initialValue: .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: selectedPOI.latitude,
+                        longitude: selectedPOI.longitude
+                    ),
+                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                )
+            )
         )
     }
 
@@ -192,16 +218,8 @@ private struct POIMapView: View {
         Group {
             if let coordinate {
                 Map(
-                    initialPosition: .region(
-                        MKCoordinateRegion(
-                            center: coordinate,
-                            span: MKCoordinateSpan(
-                                latitudeDelta: 0.01,
-                                longitudeDelta: 0.01
-                            )
-                        )
-                    ),
-                    selection: $selectedAnnotation
+                    selection: $selectedAnnotation,
+                    position: $mapPosition
                 ) {
                     if locationService.isAuthorized {
                         UserAnnotation()
@@ -348,8 +366,13 @@ private struct POIAnnotationCallout: View {
             }
 
             if let informationURL = details.informationURL {
-                Link("More information", destination: informationURL)
-                    .font(.subheadline)
+                Link(destination: informationURL) {
+                    Image("UI_MoreDetailsButton")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 190)
+                }
+                .accessibilityLabel("More information about \(details.name)")
             }
         }
         .frame(maxWidth: 240, alignment: .leading)
