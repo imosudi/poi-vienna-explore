@@ -22,6 +22,56 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(places[1].longitude, 16.40167012)
     }
 
+    func testDuplicateIdentifiersProduceOnlyOnePlace() async throws {
+        let duplicatedFeature = try XCTUnwrap(
+            String(data: sourceFixture(), encoding: .utf8)
+        ).replacingOccurrences(
+            of: "\"id\": \"SEHENSWUERDIGOGD.640964\"",
+            with: "\"id\": \"SEHENSWUERDIGOGD.640963\""
+        )
+        let service = makeService(
+            statusCode: 200,
+            body: Data(duplicatedFeature.utf8)
+        )
+
+        let places = try await service.fetchPointsOfInterest()
+
+        XCTAssertEqual(places.map(\.id), ["SEHENSWUERDIGOGD.640963"])
+        XCTAssertEqual(places.first?.name, "Ankeruhr")
+    }
+
+    func testSearchFiltersByNameAndAddressWithoutFetchingAgain() async throws {
+        let provider = CountingPOIProvider(places: [
+            PointOfInterest(
+                id: "1",
+                name: "Ankeruhr",
+                address: "Hoher Markt 10/",
+                informationURL: nil,
+                thumbnailURL: nil,
+                latitude: 48.21076056,
+                longitude: 16.37367575
+            ),
+            PointOfInterest(
+                id: "2",
+                name: "Friedhof St. Marx",
+                address: "Leberstraße 6-8",
+                informationURL: nil,
+                thumbnailURL: nil,
+                latitude: 48.18297383,
+                longitude: 16.40167012
+            )
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        model.searchText = "leberstraße"
+
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["2"])
+
+        let requestCount = provider.requestCount
+        XCTAssertEqual(requestCount, 1)
+    }
+
     func testRejectsUnsuccessfulHTTPStatus() async throws {
         let service = makeService(statusCode: 503, body: Data())
 
@@ -210,5 +260,20 @@ final class poi_vienna_explorerTests: XCTestCase {
             )
         )
         return try Data(contentsOf: fixtureURL)
+    }
+
+    @MainActor
+    private final class CountingPOIProvider: PointOfInterestProviding {
+        private let places: [PointOfInterest]
+        private(set) var requestCount = 0
+
+        init(places: [PointOfInterest]) {
+            self.places = places
+        }
+
+        func fetchPointsOfInterest() async throws -> [PointOfInterest] {
+            requestCount += 1
+            return places
+        }
     }
 }

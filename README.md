@@ -15,6 +15,8 @@ A native iOS app built with SwiftUI. The app loads Vienna sightseeing locations 
 
 Open `poi-vienna-explorer.xcodeproj` in Xcode and run the `poi-vienna-explorer` scheme on an iOS simulator or device. The deployment target is iOS 17.0.
 
+The home screen links to the sights catalogue. The catalogue loads the dataset once when opened and filters the loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Duplicate identifiers and records without usable names or coordinates are omitted.
+
 ## Vienna places data
 
 The app loads the City of Vienna dataset [Sehenswürdigkeiten Standorte Wien](https://www.data.gv.at/katalog/datasets/f4e80988-c139-4953-8176-b3d6d03f6449) from its published [WFS GeoJSON distribution](https://data.wien.gv.at/daten/geo?service=WFS&request=GetFeature&version=1.1.0&typeName=ogdwien%3ASEHENSWUERDIGOGD&srsName=EPSG%3A4326&outputFormat=json). The response is a GeoJSON `FeatureCollection` of `Point` features. The app maps `id` (falling back to `properties.OBJECTID`), `properties.NAME`, `ADRESSE`, `WEITERE_INF`, and `THUMBNAIL`; coordinates are ordered longitude then latitude.

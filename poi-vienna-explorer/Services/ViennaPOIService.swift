@@ -38,7 +38,10 @@ struct ViennaPOIService: PointOfInterestProviding {
             throw ViennaPOIServiceError.malformedResponse
         }
 
-        let places = collection.features.compactMap(\.pointOfInterest)
+        var seenIdentifiers = Set<String>()
+        let places = collection.features
+            .compactMap(\.pointOfInterest)
+            .filter { seenIdentifiers.insert($0.id).inserted }
         guard collection.features.isEmpty || !places.isEmpty else {
             throw ViennaPOIServiceError.malformedResponse
         }

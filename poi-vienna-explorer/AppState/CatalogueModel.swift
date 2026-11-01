@@ -12,7 +12,21 @@ final class CatalogueModel {
     }
 
     private(set) var state: State = .idle
+    var searchText = ""
     private let provider: any PointOfInterestProviding
+
+    var filteredPlaces: [PointOfInterest] {
+        guard case .loaded(let places) = state else { return [] }
+
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return places }
+
+        return places.filter { place in
+            [place.name, place.address, place.informationURL?.absoluteString]
+                .compactMap { $0 }
+                .contains { $0.localizedStandardContains(query) }
+        }
+    }
 
     init(provider: any PointOfInterestProviding) {
         self.provider = provider

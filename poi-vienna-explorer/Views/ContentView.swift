@@ -45,6 +45,7 @@ private struct POICatalogueView: View {
     var body: some View {
         catalogueContent
             .navigationTitle("Vienna sights")
+            .searchable(text: $catalogue.searchText, prompt: "Name, address, or website")
             .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .safeAreaInset(edge: .bottom) {
@@ -68,8 +69,10 @@ private struct POICatalogueView: View {
                     systemImage: "map",
                     description: Text("There are no Vienna sights to show right now.")
                 )
+            } else if catalogue.filteredPlaces.isEmpty {
+                ContentUnavailableView.search(text: catalogue.searchText)
             } else {
-                List(places) { place in
+                List(catalogue.filteredPlaces) { place in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(place.name)
                             .font(.headline)
