@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var catalogue = CatalogueModel()
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -20,7 +22,7 @@ struct ContentView: View {
                 )
 
                 NavigationLink {
-                    POICatalogueView()
+                    POICatalogueView(catalogue: catalogue)
                 } label: {
                     Label("Browse places", systemImage: "list.bullet")
                         .frame(maxWidth: 240)
@@ -36,23 +38,40 @@ struct ContentView: View {
                 CopyrightFooter()
             }
         }
+        .task {
+            await catalogue.loadIfNeeded()
+        }
     }
 }
 
 private struct POICatalogueView: View {
-    @State private var catalogue = CatalogueModel()
+    let catalogue: CatalogueModel
 
     var body: some View {
         catalogueContent
             .navigationTitle("Vienna sights")
             .searchable(text: $catalogue.searchText, prompt: "Name, address, or website")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            await catalogue.refresh()
+                        }
+                    } label: {
+                        if catalogue.isRefreshing {
+                            ProgressView()
+                                .accessibilityLabel("Refreshing places")
+                        } else {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(catalogue.isRefreshing || !catalogue.hasLoadedPlaces)
+                }
+            }
             .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .safeAreaInset(edge: .bottom) {
                 CopyrightFooter()
-            }
-            .task {
-                await catalogue.loadIfNeeded()
             }
     }
 
@@ -63,35 +82,49 @@ private struct POICatalogueView: View {
             ProgressView("Loading places")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .loaded(let places):
-            if places.isEmpty {
-                ContentUnavailableView(
-                    "No places found",
-                    systemImage: "map",
-                    description: Text("There are no Vienna sights to show right now.")
-                )
-            } else if catalogue.filteredPlaces.isEmpty {
-                ContentUnavailableView.search(text: catalogue.searchText)
-            } else {
-                List(catalogue.filteredPlaces) { place in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(place.name)
-                            .font(.headline)
-
-                        if let address = place.address {
-                            Label(address, systemImage: "mappin")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        if let informationURL = place.informationURL {
-                            Link("More information", destination: informationURL)
-                                .font(.subheadline)
-                        }
-                    }
-                    .padding(.vertical, 6)
+            VStack(spacing: 0) {
+                if let refreshError = catalogue.refreshError {
+                    Label(refreshError, systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .accessibilityIdentifier("catalogue-refresh-error")
                 }
-                .listStyle(.plain)
-                .scrollIndicators(.visible, axes: .vertical)
+
+                if places.isEmpty {
+                    ContentUnavailableView(
+                        "No places found",
+                        systemImage: "map",
+                        description: Text("There are no Vienna sights to show right now.")
+                    )
+                } else if catalogue.filteredPlaces.isEmpty {
+                    ContentUnavailableView.search(text: catalogue.searchText)
+                } else {
+                    List(catalogue.filteredPlaces) { place in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(place.name)
+                                .font(.headline)
+
+                            if let address = place.address {
+                                Label(address, systemImage: "mappin")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            if let informationURL = place.informationURL {
+                                Link("More information", destination: informationURL)
+                                    .font(.subheadline)
+                            }
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .listStyle(.plain)
+                    .scrollIndicators(.visible, axes: .vertical)
+                    .refreshable {
+                        await catalogue.refresh()
+                    }
+                }
             }
         case .failed(let message):
             ContentUnavailableView {

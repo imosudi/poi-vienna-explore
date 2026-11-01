@@ -72,6 +72,84 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(requestCount, 1)
     }
 
+    func testRefreshReplacesPlacesAfterSuccessfulFetch() async throws {
+        let original = makePlace(id: "1", name: "Original")
+        let updated = makePlace(id: "2", name: "Updated")
+        let provider = RefreshPOIProvider(outcomes: [
+            .success([original]),
+            .success([updated])
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        await model.refresh()
+
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["2"])
+        XCTAssertNil(model.refreshError)
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(provider.requestCount, 2)
+    }
+
+    func testRefreshFailurePreservesExistingPlacesAndReportsError() async throws {
+        let original = makePlace(id: "1", name: "Original")
+        let provider = RefreshPOIProvider(outcomes: [
+            .success([original]),
+            .failure
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        await model.refresh()
+
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["1"])
+        XCTAssertTrue(model.refreshError?.contains("Could not refresh places") == true)
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(provider.requestCount, 2)
+    }
+
+    func testRefreshShowsLoadingAndPreventsOverlappingRequests() async throws {
+        let original = makePlace(id: "1", name: "Original")
+        let updated = makePlace(id: "2", name: "Updated")
+        let provider = RefreshPOIProvider(
+            outcomes: [.success([original]), .success([updated])],
+            delayNanoseconds: 80_000_000
+        )
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        let refreshTask = Task { await model.refresh() }
+        try await Task.sleep(nanoseconds: 20_000_000)
+
+        XCTAssertTrue(model.isRefreshing)
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["1"])
+
+        await model.refresh()
+        XCTAssertEqual(provider.requestCount, 2)
+
+        await refreshTask.value
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(loadedPlaceIDs(in: model), ["2"])
+    }
+
+    func testRefreshKeepsActiveSearchAndFiltersNewResults() async throws {
+        let provider = RefreshPOIProvider(outcomes: [
+            .success([makePlace(id: "1", name: "First")]),
+            .success([
+                makePlace(id: "2", name: "Second", address: "Market 1"),
+                makePlace(id: "3", name: "Third", address: "Park 2")
+            ])
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+        model.searchText = "market"
+        await model.refresh()
+
+        XCTAssertEqual(model.searchText, "market")
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["2"])
+        XCTAssertEqual(provider.requestCount, 2)
+    }
+
     func testRejectsUnsuccessfulHTTPStatus() async throws {
         let service = makeService(statusCode: 503, body: Data())
 
@@ -262,6 +340,30 @@ final class poi_vienna_explorerTests: XCTestCase {
         return try Data(contentsOf: fixtureURL)
     }
 
+    private func loadedPlaceIDs(in model: CatalogueModel) -> [String]? {
+        guard case .loaded(let places) = model.state else {
+            XCTFail("Expected the catalogue to retain loaded places.")
+            return nil
+        }
+        return places.map(\.id)
+    }
+
+    private func makePlace(
+        id: String,
+        name: String,
+        address: String? = nil
+    ) -> PointOfInterest {
+        PointOfInterest(
+            id: id,
+            name: name,
+            address: address,
+            informationURL: nil,
+            thumbnailURL: nil,
+            latitude: 48.2,
+            longitude: 16.3
+        )
+    }
+
     @MainActor
     private final class CountingPOIProvider: PointOfInterestProviding {
         private let places: [PointOfInterest]
@@ -274,6 +376,40 @@ final class poi_vienna_explorerTests: XCTestCase {
         func fetchPointsOfInterest() async throws -> [PointOfInterest] {
             requestCount += 1
             return places
+        }
+    }
+
+    @MainActor
+    private final class RefreshPOIProvider: PointOfInterestProviding {
+        enum Outcome {
+            case success([PointOfInterest])
+            case failure
+        }
+
+        private let outcomes: [Outcome]
+        private let delayNanoseconds: UInt64
+        private(set) var requestCount = 0
+
+        init(outcomes: [Outcome], delayNanoseconds: UInt64 = 0) {
+            self.outcomes = outcomes
+            self.delayNanoseconds = delayNanoseconds
+        }
+
+        func fetchPointsOfInterest() async throws -> [PointOfInterest] {
+            let requestIndex = requestCount
+            requestCount += 1
+            if delayNanoseconds > 0 {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            }
+            guard outcomes.indices.contains(requestIndex) else {
+                throw URLError(.resourceUnavailable)
+            }
+            switch outcomes[requestIndex] {
+            case .success(let places):
+                return places
+            case .failure:
+                throw URLError(.notConnectedToInternet)
+            }
         }
     }
 }

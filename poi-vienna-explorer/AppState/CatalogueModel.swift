@@ -12,8 +12,15 @@ final class CatalogueModel {
     }
 
     private(set) var state: State = .idle
+    private(set) var isRefreshing = false
+    private(set) var refreshError: String?
     var searchText = ""
     private let provider: any PointOfInterestProviding
+
+    var hasLoadedPlaces: Bool {
+        if case .loaded = state { return true }
+        return false
+    }
 
     var filteredPlaces: [PointOfInterest] {
         guard case .loaded(let places) = state else { return [] }
@@ -54,5 +61,24 @@ final class CatalogueModel {
         guard case .failed = state else { return }
         state = .idle
         await loadIfNeeded()
+    }
+
+    func refresh() async {
+        guard case .loaded = state, !isRefreshing else { return }
+
+        isRefreshing = true
+        refreshError = nil
+        defer { isRefreshing = false }
+
+        do {
+            let places = try await provider.fetchPointsOfInterest()
+            guard !Task.isCancelled else { return }
+            state = .loaded(places)
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else { return }
+            refreshError = "Could not refresh places: \(error.localizedDescription)"
+        }
     }
 }

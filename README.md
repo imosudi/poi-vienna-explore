@@ -15,7 +15,7 @@ A native iOS app built with SwiftUI. The app loads Vienna sightseeing locations 
 
 Open `poi-vienna-explorer.xcodeproj` in Xcode and run the `poi-vienna-explorer` scheme on an iOS simulator or device. The deployment target is iOS 17.0.
 
-The home screen links to the sights catalogue. The catalogue loads the dataset once when opened and filters the loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Duplicate identifiers and records without usable names or coordinates are omitted.
+The app starts loading the dataset on launch, and the home screen links to the sights catalogue. The catalogue filters loaded names, addresses, and information links locally as you type; changing the search text does not issue additional requests. Use the Refresh button or pull down on the list to request updated records. A failed refresh leaves the previous results visible. Duplicate identifiers and records without usable names or coordinates are omitted.
 
 ## Vienna places data
 
