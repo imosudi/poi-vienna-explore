@@ -18,6 +18,7 @@ struct ContentView: View {
                     Image("BrandingHeaderBanner")
                         .resizable()
                         .scaledToFit()
+                        .modifier(HoverGiggleEffect())
                         .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
 
                     NavigationLink {
@@ -49,6 +50,22 @@ struct ContentView: View {
         .task {
             await catalogue.loadIfNeeded()
         }
+    }
+}
+
+private struct HoverGiggleEffect: ViewModifier {
+    @State private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(isHovered ? 2 : 0))
+            .animation(
+                isHovered
+                    ? .easeInOut(duration: 0.1).repeatForever(autoreverses: true)
+                    : .spring(response: 0.25, dampingFraction: 0.5),
+                value: isHovered
+            )
+            .onHover { isHovered = $0 }
     }
 }
 
