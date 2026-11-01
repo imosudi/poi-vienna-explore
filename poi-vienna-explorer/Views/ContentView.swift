@@ -54,18 +54,30 @@ struct ContentView: View {
 }
 
 private struct HoverGiggleEffect: ViewModifier {
+    @State private var rotation = 0.0
     @State private var isHovered = false
 
     func body(content: Content) -> some View {
         content
-            .rotationEffect(.degrees(isHovered ? 2 : 0))
-            .animation(
-                isHovered
-                    ? .easeInOut(duration: 0.1).repeatForever(autoreverses: true)
-                    : .spring(response: 0.25, dampingFraction: 0.5),
-                value: isHovered
-            )
-            .onHover { isHovered = $0 }
+            .contentShape(Rectangle())
+            .rotationEffect(.degrees(rotation))
+            .hoverEffect(.highlight)
+            .onContinuousHover { phase in
+                switch phase {
+                case .active:
+                    guard !isHovered else { return }
+                    isHovered = true
+                    withAnimation(.easeInOut(duration: 0.12).repeatForever(autoreverses: true)) {
+                        rotation = 5
+                    }
+                case .ended:
+                    guard isHovered else { return }
+                    isHovered = false
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
+                        rotation = 0
+                    }
+                }
+            }
     }
 }
 
