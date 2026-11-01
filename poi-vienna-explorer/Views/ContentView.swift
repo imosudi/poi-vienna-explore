@@ -103,28 +103,21 @@ private struct POICatalogueView: View {
                     ContentUnavailableView.search(text: catalogue.searchText)
                 } else {
                     List(catalogue.filteredPlaces) { place in
-                        HStack(alignment: .center, spacing: 12) {
-                            NavigationLink {
-                                POIMapView(selectedPOI: place)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(place.name)
-                                        .font(.headline)
+                        NavigationLink {
+                            POIMapView(selectedPOI: place)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(place.name)
+                                    .font(.headline)
 
-                                    if let address = place.address {
-                                        Label(address, systemImage: "mappin")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
+                                if let address = place.address {
+                                    Label(address, systemImage: "mappin")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
                             }
-
-                            if let informationURL = place.informationURL {
-                                Link("More information", destination: informationURL)
-                                    .font(.subheadline)
-                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
                         .padding(.vertical, 6)
                     }
