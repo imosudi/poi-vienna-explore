@@ -14,3 +14,13 @@ A native iOS app scaffold built with SwiftUI. This milestone establishes the pro
 - `poi-vienna-explorerUITests/` — UI tests
 
 Open `poi-vienna-explorer.xcodeproj` in Xcode and run the `poi-vienna-explorer` scheme on an iOS simulator or device. The deployment target is iOS 17.0.
+
+## Debug screenshot
+
+Portrait:
+
+![Vienna POI Explorer running in the iPhone simulator](screenshots/debug-screenshot.png)
+
+Landscape:
+
+![Vienna POI Explorer running in landscape in the iPhone simulator](screenshots/debug-screenshot-landscape.png)
