@@ -218,8 +218,8 @@ private struct POIMapView: View {
         Group {
             if let coordinate {
                 Map(
-                    selection: $selectedAnnotation,
-                    position: $mapPosition
+                    position: $mapPosition,
+                    selection: $selectedAnnotation
                 ) {
                     if locationService.isAuthorized {
                         UserAnnotation()
