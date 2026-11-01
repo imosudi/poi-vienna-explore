@@ -45,7 +45,7 @@ struct ContentView: View {
 }
 
 private struct POICatalogueView: View {
-    let catalogue: CatalogueModel
+    @Bindable var catalogue: CatalogueModel
 
     var body: some View {
         catalogueContent
