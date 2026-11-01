@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 
 @MainActor
@@ -13,8 +14,12 @@ final class CatalogueModel {
     private(set) var state: State = .idle
     private let provider: any PointOfInterestProviding
 
-    init(provider: any PointOfInterestProviding = ViennaPOIService()) {
+    init(provider: any PointOfInterestProviding) {
         self.provider = provider
+    }
+
+    init() {
+        self.provider = ViennaPOIService()
     }
 
     func loadIfNeeded() async {
