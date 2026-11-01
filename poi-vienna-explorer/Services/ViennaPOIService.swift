@@ -27,9 +27,9 @@ struct ViennaPOIService: PointOfInterestProviding {
             throw ViennaPOIServiceError.httpStatusCode(response.statusCode)
         }
 
-        let collection: FeatureCollection
+        let collection: ViennaPOIFeatureCollection
         do {
-            collection = try JSONDecoder().decode(FeatureCollection.self, from: data)
+            collection = try JSONDecoder().decode(ViennaPOIFeatureCollection.self, from: data)
         } catch {
             throw ViennaPOIServiceError.malformedResponse
         }
@@ -38,7 +38,11 @@ struct ViennaPOIService: PointOfInterestProviding {
             throw ViennaPOIServiceError.malformedResponse
         }
 
-        return try collection.features.map { try $0.makePointOfInterest() }
+        let places = collection.features.compactMap(\.pointOfInterest)
+        guard collection.features.isEmpty || !places.isEmpty else {
+            throw ViennaPOIServiceError.malformedResponse
+        }
+        return places
     }
 }
 
@@ -56,55 +60,5 @@ enum ViennaPOIServiceError: LocalizedError, Equatable {
         case .malformedResponse:
             return "The Vienna places data could not be read."
         }
-    }
-}
-
-private struct FeatureCollection: Decodable {
-    let type: String
-    let features: [Feature]
-}
-
-private struct Feature: Decodable {
-    let id: String
-    let geometry: Geometry
-    let properties: Properties
-
-    func makePointOfInterest() throws -> PointOfInterest {
-        guard geometry.coordinates.count >= 2 else {
-            throw ViennaPOIServiceError.malformedResponse
-        }
-
-        let longitude = geometry.coordinates[0]
-        let latitude = geometry.coordinates[1]
-        guard longitude.isFinite,
-              latitude.isFinite,
-              (-180...180).contains(longitude),
-              (-90...90).contains(latitude),
-              !properties.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else {
-            throw ViennaPOIServiceError.malformedResponse
-        }
-
-        return PointOfInterest(
-            id: id,
-            name: properties.name,
-            address: properties.address,
-            latitude: latitude,
-            longitude: longitude
-        )
-    }
-}
-
-private struct Geometry: Decodable {
-    let coordinates: [Double]
-}
-
-private struct Properties: Decodable {
-    let name: String
-    let address: String?
-
-    enum CodingKeys: String, CodingKey {
-        case name = "NAME"
-        case address = "ADRESSE"
     }
 }
