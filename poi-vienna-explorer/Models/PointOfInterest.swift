@@ -63,12 +63,12 @@ struct ViennaPOIFeature: Decodable {
         )
     }
 
-    private static func nonempty(_ value: String) -> String? {
+    nonisolated private static func nonempty(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private static func webURL(_ value: String?) -> URL? {
+    nonisolated private static func webURL(_ value: String?) -> URL? {
         guard let value,
               let components = URLComponents(string: value),
               ["http", "https"].contains(components.scheme?.lowercased() ?? ""),
