@@ -5,7 +5,6 @@ A native iOS app scaffold built with SwiftUI. This milestone establishes the pro
 ## Project structure
 
 - `poi-vienna-explorer/App/` — app entry point
-- `poi-vienna-explorer/AppState/` — application-level state
 - `poi-vienna-explorer/Models/` — domain models
 - `poi-vienna-explorer/Services/` — data service interfaces
 - `poi-vienna-explorer/Views/` — SwiftUI screens

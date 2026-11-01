@@ -9,12 +9,9 @@ import SwiftUI
 
 @main
 struct poi_vienna_explorerApp: App {
-    @State private var appState = AppState()
-
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(appState)
         }
     }
 }
