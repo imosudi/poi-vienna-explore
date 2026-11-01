@@ -214,17 +214,18 @@ private struct POIMapView: View {
                             coordinate: annotationCoordinate,
                             anchor: .bottom
                         ) {
+                            let markerStyle = POIMarkerStyle(pointOfInterest: place)
+                            let isSelected = selectedAnnotation?.id == annotation.id
+
                             VStack(spacing: 4) {
-                                if selectedAnnotation?.id == annotation.id {
+                                if isSelected {
                                     POIAnnotationCallout(details: annotation)
                                 }
 
-                                Image(systemName: "mappin.circle.fill")
-                                    .font(.title)
-                                    .foregroundStyle(
-                                        selectedAnnotation?.id == annotation.id ? .red : .accentColor
+                                POIMarkerView(style: markerStyle, isSelected: isSelected)
+                                    .accessibilityLabel(
+                                        "\(annotation.name), \(markerStyle.accessibilityDescription)"
                                     )
-                                    .accessibilityLabel("Show details for \(annotation.name)")
                             }
                             .contentShape(Rectangle())
                             .accessibilityIdentifier("poi-annotation-\(annotation.id)")
@@ -245,6 +246,34 @@ private struct POIMapView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+    }
+}
+
+private struct POIMarkerView: View {
+    let style: POIMarkerStyle
+    let isSelected: Bool
+
+    private var markerColor: Color {
+        switch style {
+        case .informationLink:
+            .blue
+        case .neutral:
+            .gray
+        }
+    }
+
+    var body: some View {
+        Image(systemName: "mappin")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 32, height: 32)
+            .background(markerColor, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(.white, lineWidth: isSelected ? 3 : 1)
+            }
+            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            .scaleEffect(isSelected ? 1.15 : 1)
     }
 }
 

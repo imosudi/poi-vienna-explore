@@ -10,6 +10,24 @@ struct PointOfInterest: Identifiable, Hashable, Sendable {
     let longitude: Double
 }
 
+enum POIMarkerStyle: String, Equatable, Sendable {
+    case informationLink
+    case neutral
+
+    init(pointOfInterest: PointOfInterest) {
+        self = pointOfInterest.informationURL == nil ? .neutral : .informationLink
+    }
+
+    var accessibilityDescription: String {
+        switch self {
+        case .informationLink:
+            "Information link available"
+        case .neutral:
+            "No information link listed"
+        }
+    }
+}
+
 struct POIAnnotationDetails: Identifiable, Hashable, Sendable {
     let id: String
     let name: String

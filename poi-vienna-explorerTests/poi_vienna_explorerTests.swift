@@ -60,6 +60,26 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertNil(details.thumbnailURL)
     }
 
+    func testMarkerStyleUsesInformationLinkAndNeutralForMissingLink() throws {
+        let linkedPlace = PointOfInterest(
+            id: "1",
+            name: "Place with link",
+            address: nil,
+            informationURL: try XCTUnwrap(URL(string: "https://example.com/place")),
+            thumbnailURL: nil,
+            latitude: 48.2,
+            longitude: 16.3
+        )
+        let placeWithoutLink = makePlace(id: "2", name: "Place without link")
+
+        XCTAssertEqual(POIMarkerStyle(pointOfInterest: linkedPlace), .informationLink)
+        XCTAssertEqual(POIMarkerStyle(pointOfInterest: placeWithoutLink), .neutral)
+        XCTAssertEqual(
+            POIMarkerStyle(pointOfInterest: placeWithoutLink).accessibilityDescription,
+            "No information link listed"
+        )
+    }
+
     func testDuplicateIdentifiersProduceOnlyOnePlace() async throws {
         let duplicatedFeature = try XCTUnwrap(
             String(data: sourceFixture(), encoding: .utf8)
