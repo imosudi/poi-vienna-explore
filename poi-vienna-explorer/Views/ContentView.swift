@@ -66,6 +66,7 @@ struct ContentView: View {
                     .padding(.vertical, 6)
                 }
                 .listStyle(.plain)
+                .scrollIndicators(.visible, axes: .vertical)
             }
         case .failed(let message):
             ContentUnavailableView {
