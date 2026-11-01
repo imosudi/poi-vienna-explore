@@ -14,12 +14,18 @@ struct ContentView: View {
         NavigationStack {
             catalogueContent
                 .navigationTitle("Explore Vienna")
+                .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
                 .safeAreaInset(edge: .bottom) {
                     Text("Mosudi Isiaka O., FHTW © 2026")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
+                        .background {
+                            Color(uiColor: .systemBackground)
+                                .ignoresSafeArea(edges: .bottom)
+                        }
                 }
                 .task {
                     await catalogue.loadIfNeeded()
