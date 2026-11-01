@@ -376,22 +376,19 @@ private struct POIAnnotationCallout: View {
                         image
                             .resizable()
                             .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 96)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
+                .frame(width: 216, height: 96)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 .accessibilityHidden(true)
             }
 
             if let informationURL = details.informationURL {
-                Link(destination: informationURL) {
-                    Image("UI_MoreDetailsButton")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 190)
-                }
-                .accessibilityLabel("More information about \(details.name)")
+                Link("More information", destination: informationURL)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .padding(.top, 2)
+                    .accessibilityIdentifier("poi-information-link-\(details.id)")
             }
         }
         .frame(maxWidth: 240, alignment: .leading)
