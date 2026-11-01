@@ -23,12 +23,18 @@ The app loads the City of Vienna dataset [Sehenswürdigkeiten Standorte Wien](ht
 
 Features without a stable identifier, a non-empty name, a `Point` geometry, or finite in-range coordinates are skipped instead of becoming invalid map/list entries. Missing descriptive values remain optional, invalid optional web links are omitted, and extra coordinate dimensions are ignored. Marker colour reflects only whether a valid `WEITERE_INF` link is present. The sample fixture in `poi-vienna-explorerTests/Fixtures/` contains unmodified records from the official response, including its nullable `SE_ANNO_CAD_DATA` field.
 
-## Debug screenshot
+## Screenshots
 
-Portrait:
+### Home screen
 
-![Vienna POI Explorer running in the iPhone simulator](screenshots/debug-screenshot.png)
+![Home screen in landscape](screenshots/debug-screenshot.png)
 
-Landscape:
+![Home screen in portrait](screenshots/debug-screenshot-landscape.png)
 
-![Vienna POI Explorer running in landscape in the iPhone simulator](screenshots/debug-screenshot-landscape.png)
+### POI map
+
+![POI map and selected place in landscape](screenshots/debug-screenshot-map-landscape.png)
+
+![POI map and selected place in portrait](screenshots/debug-screenshot-map.png)
+
+![POI map and selected place, additional capture](screenshots/debug-screenshot-landscape_poi.png)
