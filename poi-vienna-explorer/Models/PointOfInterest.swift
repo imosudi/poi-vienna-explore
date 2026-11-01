@@ -10,6 +10,26 @@ struct PointOfInterest: Identifiable, Hashable, Sendable {
     let longitude: Double
 }
 
+struct POIAnnotationDetails: Identifiable, Hashable, Sendable {
+    let id: String
+    let name: String
+    let address: String?
+    let informationURL: URL?
+    let thumbnailURL: URL?
+    let latitude: Double
+    let longitude: Double
+
+    init(pointOfInterest: PointOfInterest) {
+        id = pointOfInterest.id
+        name = pointOfInterest.name
+        address = pointOfInterest.address
+        informationURL = pointOfInterest.informationURL
+        thumbnailURL = pointOfInterest.thumbnailURL
+        latitude = pointOfInterest.latitude
+        longitude = pointOfInterest.longitude
+    }
+}
+
 struct ViennaPOIFeatureCollection: Decodable {
     let type: String
     let features: [ViennaPOIFeature]

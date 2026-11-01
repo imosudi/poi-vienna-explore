@@ -22,6 +22,44 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(places[1].longitude, 16.40167012)
     }
 
+    func testAnnotationDetailsRetainTheSelectedPlaceAttributes() throws {
+        let first = PointOfInterest(
+            id: "1",
+            name: "First place",
+            address: "First address",
+            informationURL: try XCTUnwrap(URL(string: "https://example.com/first")),
+            thumbnailURL: try XCTUnwrap(URL(string: "https://example.com/first.jpg")),
+            latitude: 48.2,
+            longitude: 16.3
+        )
+        let second = makePlace(id: "2", name: "Second place", address: "Second address")
+
+        let firstDetails = POIAnnotationDetails(pointOfInterest: first)
+        let secondDetails = POIAnnotationDetails(pointOfInterest: second)
+
+        XCTAssertEqual(firstDetails.id, first.id)
+        XCTAssertEqual(firstDetails.name, first.name)
+        XCTAssertEqual(firstDetails.address, first.address)
+        XCTAssertEqual(firstDetails.informationURL, first.informationURL)
+        XCTAssertEqual(firstDetails.thumbnailURL, first.thumbnailURL)
+        XCTAssertEqual(firstDetails.latitude, first.latitude)
+        XCTAssertEqual(firstDetails.longitude, first.longitude)
+        XCTAssertNotEqual(firstDetails, secondDetails)
+        XCTAssertEqual(secondDetails.id, second.id)
+        XCTAssertEqual(secondDetails.name, second.name)
+        XCTAssertEqual(secondDetails.address, second.address)
+    }
+
+    func testAnnotationDetailsKeepMissingOptionalFieldsAbsent() {
+        let details = POIAnnotationDetails(
+            pointOfInterest: makePlace(id: "1", name: "Place without optional details")
+        )
+
+        XCTAssertNil(details.address)
+        XCTAssertNil(details.informationURL)
+        XCTAssertNil(details.thumbnailURL)
+    }
+
     func testDuplicateIdentifiersProduceOnlyOnePlace() async throws {
         let duplicatedFeature = try XCTUnwrap(
             String(data: sourceFixture(), encoding: .utf8)

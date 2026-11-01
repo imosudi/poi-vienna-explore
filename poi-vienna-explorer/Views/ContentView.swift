@@ -104,7 +104,7 @@ private struct POICatalogueView: View {
                 } else {
                     List(catalogue.filteredPlaces) { place in
                         NavigationLink {
-                            POIMapView(selectedPOI: place)
+                            POIMapView(selectedPOI: place, places: places)
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(place.name)
@@ -161,6 +161,16 @@ private struct CopyrightFooter: View {
 
 private struct POIMapView: View {
     let selectedPOI: PointOfInterest
+    let places: [PointOfInterest]
+    @State private var selectedAnnotation: POIAnnotationDetails?
+
+    init(selectedPOI: PointOfInterest, places: [PointOfInterest]) {
+        self.selectedPOI = selectedPOI
+        self.places = places
+        _selectedAnnotation = State(
+            initialValue: POIAnnotationDetails(pointOfInterest: selectedPOI)
+        )
+    }
 
     private var coordinate: CLLocationCoordinate2D? {
         let latitude = selectedPOI.latitude
@@ -189,12 +199,39 @@ private struct POIMapView: View {
                                 longitudeDelta: 0.01
                             )
                         )
-                    )
+                    ),
+                    selection: $selectedAnnotation
                 ) {
-                    Marker(selectedPOI.name, coordinate: coordinate)
-                }
-                .safeAreaInset(edge: .bottom) {
-                    poiDetails
+                    ForEach(places) { place in
+                        let annotation = POIAnnotationDetails(pointOfInterest: place)
+                        let annotationCoordinate = CLLocationCoordinate2D(
+                            latitude: annotation.latitude,
+                            longitude: annotation.longitude
+                        )
+
+                        Annotation(
+                            annotation.name,
+                            coordinate: annotationCoordinate,
+                            anchor: .bottom
+                        ) {
+                            VStack(spacing: 4) {
+                                if selectedAnnotation?.id == annotation.id {
+                                    POIAnnotationCallout(details: annotation)
+                                }
+
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.title)
+                                    .foregroundStyle(
+                                        selectedAnnotation?.id == annotation.id ? .red : .accentColor
+                                    )
+                                    .accessibilityLabel("Show details for \(annotation.name)")
+                            }
+                            .contentShape(Rectangle())
+                            .accessibilityIdentifier("poi-annotation-\(annotation.id)")
+                        }
+                        .annotationTitles(.hidden)
+                        .tag(annotation)
+                    }
                 }
             } else {
                 ContentUnavailableView(
@@ -209,26 +246,52 @@ private struct POIMapView: View {
         .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
     }
+}
 
-    private var poiDetails: some View {
+private struct POIAnnotationCallout: View {
+    let details: POIAnnotationDetails
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(selectedPOI.name)
+            Text(details.name)
                 .font(.headline)
 
-            if let address = selectedPOI.address {
+            if let address = details.address {
                 Label(address, systemImage: "mappin")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            if let informationURL = selectedPOI.informationURL {
+            if let thumbnailURL = details.thumbnailURL {
+                AsyncImage(url: thumbnailURL) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 96)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+
+            if let informationURL = details.informationURL {
                 Link("More information", destination: informationURL)
                     .font(.subheadline)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
+        .frame(maxWidth: 240, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(12)
         .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.quaternary, lineWidth: 1)
+        }
+        .shadow(radius: 4)
+        .accessibilityIdentifier("poi-callout-\(details.id)")
     }
 }
 
