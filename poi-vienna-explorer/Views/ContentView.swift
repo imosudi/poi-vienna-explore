@@ -46,7 +46,8 @@ struct ContentView: View {
             NavigationStack {
                 SavedPlacesView(
                     savedPlaces: savedPlaces,
-                    places: catalogue.loadedPlaces
+                    places: catalogue.loadedPlaces,
+                    onBackToExplore: { selectedTab = .explore }
                 )
                 .onAppear {
                     savedPlaces.reload()
@@ -348,11 +349,12 @@ private struct POICatalogueView: View {
 private struct FavoritePlaceButton: View {
     let place: PointOfInterest
     @Bindable var savedPlaces: SavedPlacesModel
+    @State private var isConfirmingRemoval = false
 
     var body: some View {
         Button {
             if savedPlaces.contains(place) {
-                savedPlaces.remove(place)
+                isConfirmingRemoval = true
             } else {
                 savedPlaces.save(place)
             }
@@ -365,15 +367,25 @@ private struct FavoritePlaceButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            savedPlaces.contains(place) ? "Remove Favourite" : "Add Favourite"
+            savedPlaces.contains(place) ? "Delete Favourite" : "Add Favourite"
         )
         .accessibilityIdentifier("save-poi-\(place.id)")
+        .alert("Delete Favourite?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Favourite", role: .destructive) {
+                savedPlaces.remove(place)
+            }
+        } message: {
+            Text("This removes \(place.name) from Favourites only. It will remain in the places catalogue.")
+        }
     }
 }
 
 private struct SavedPlacesView: View {
     @Bindable var savedPlaces: SavedPlacesModel
     let places: [PointOfInterest]
+    let onBackToExplore: () -> Void
+    @State private var placePendingDeletion: PointOfInterest?
 
     var body: some View {
         Group {
@@ -400,12 +412,13 @@ private struct SavedPlacesView: View {
                             )
                         }
                         .swipeActions {
-                            Button(role: .destructive) {
-                                savedPlaces.remove(place)
+                            Button {
+                                placePendingDeletion = place
                             } label: {
-                                Label("Remove Favourite", systemImage: "trash")
+                                Label("Delete Favourite", systemImage: "trash")
                             }
-                            .accessibilityLabel("Remove \(place.name) from Favourites")
+                            .tint(.red)
+                            .accessibilityLabel("Delete \(place.name) from Favourites")
                             .accessibilityIdentifier("remove-favourite-\(place.id)")
                         }
                     }
@@ -419,6 +432,36 @@ private struct SavedPlacesView: View {
         .navigationTitle("Favourites")
         .toolbarBackground(AppPalette.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: onBackToExplore) {
+                    Label("Back", systemImage: "chevron.left")
+                }
+                .accessibilityIdentifier("back-to-explore")
+            }
+        }
+        .alert(
+            "Delete Favourite?",
+            isPresented: Binding(
+                get: { placePendingDeletion != nil },
+                set: { if !$0 { placePendingDeletion = nil } }
+            )
+        ) {
+            Button("Cancel", role: .cancel) {
+                placePendingDeletion = nil
+            }
+            Button("Delete Favourite", role: .destructive) {
+                if let placePendingDeletion {
+                    savedPlaces.remove(placePendingDeletion)
+                }
+                placePendingDeletion = nil
+            }
+        } message: {
+            Text(
+                "This removes \(placePendingDeletion?.name ?? "this place") from Favourites only. "
+                    + "It will remain in the places catalogue."
+            )
+        }
     }
 }
 
@@ -620,6 +663,7 @@ private struct POIMapView: View {
     @State private var selectedAnnotation: POIAnnotationDetails?
     @StateObject private var locationService = UserLocationService()
     @State private var mapPosition: MapCameraPosition
+    @State private var isConfirmingRemoval = false
 
     init(
         selectedPOI: PointOfInterest,
@@ -735,7 +779,7 @@ private struct POIMapView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     if savedPlaces.contains(selectedPOI) {
-                        savedPlaces.remove(selectedPOI)
+                        isConfirmingRemoval = true
                     } else {
                         savedPlaces.save(selectedPOI)
                     }
@@ -748,10 +792,21 @@ private struct POIMapView: View {
                     )
                 }
                 .accessibilityLabel(
-                    savedPlaces.contains(selectedPOI) ? "Remove Favourite" : "Add Favourite"
+                    savedPlaces.contains(selectedPOI) ? "Delete Favourite" : "Add Favourite"
                 )
                 .accessibilityIdentifier("save-poi-\(selectedPOI.id)")
             }
+        }
+        .alert("Delete Favourite?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Favourite", role: .destructive) {
+                savedPlaces.remove(selectedPOI)
+            }
+        } message: {
+            Text(
+                "This removes \(selectedPOI.name) from Favourites only. "
+                    + "It will remain in the places catalogue."
+            )
         }
         .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
