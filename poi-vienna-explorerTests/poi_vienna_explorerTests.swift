@@ -157,6 +157,22 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(try relaunchedStore.load(), [place])
     }
 
+    func testReloadReflectsChangesPersistedAfterModelInitialization() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let model = SavedPlacesModel(store: store)
+        let savedPlace = makePlace(id: "external-save", name: "Externally saved")
+
+        try store.save(savedPlace)
+        XCTAssertTrue(model.places.isEmpty)
+
+        model.reload()
+
+        XCTAssertEqual(model.places, [savedPlace])
+        XCTAssertNil(model.errorMessage)
+    }
+
     func testSavingSamePOIIdentifierDoesNotCreateDuplicate() throws {
         let (directory, fileURL) = temporarySavedPlacesFile()
         defer { try? FileManager.default.removeItem(at: directory) }

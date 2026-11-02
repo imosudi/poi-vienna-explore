@@ -11,10 +11,15 @@ final class SavedPlacesModel {
     init(store: SavedPOIStore? = nil) {
         let store = store ?? SavedPOIStore()
         self.store = store
+        reload()
+    }
+
+    func reload() {
         do {
             places = try store.load()
+            errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Could not load favourites: \(error.localizedDescription)"
         }
     }
 
@@ -27,7 +32,7 @@ final class SavedPlacesModel {
             places = try store.save(place)
             errorMessage = nil
         } catch {
-            errorMessage = "Could not save \(place.name): \(error.localizedDescription)"
+            errorMessage = "Could not save favourite \(place.name): \(error.localizedDescription)"
         }
     }
 
@@ -36,7 +41,7 @@ final class SavedPlacesModel {
             places = try store.remove(id: place.id)
             errorMessage = nil
         } catch {
-            errorMessage = "Could not remove \(place.name): \(error.localizedDescription)"
+            errorMessage = "Could not remove favourite \(place.name): \(error.localizedDescription)"
         }
     }
 

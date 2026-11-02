@@ -49,11 +49,14 @@ struct ContentView: View {
                     savedPlaces: savedPlaces,
                     places: catalogue.loadedPlaces
                 )
+                .onAppear {
+                    savedPlaces.reload()
+                }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 CopyrightFooter()
             }
-            .tabItem { Label("Saved", systemImage: "heart") }
+            .tabItem { Label("Favourites", systemImage: "heart") }
             .tag(ExplorerTab.saved)
         }
         .tint(AppPalette.accent)
@@ -61,7 +64,7 @@ struct ContentView: View {
             await catalogue.loadIfNeeded()
         }
         .alert(
-            "Saved places",
+            "Favourites",
             isPresented: Binding(
                 get: { savedPlaces.errorMessage != nil },
                 set: { if !$0 { savedPlaces.clearError() } }
@@ -118,7 +121,7 @@ private struct ExploreHomeView: View {
                 .accessibilityLabel("Browse places in Vienna")
 
                 Button(action: onOpenSavedPlaces) {
-                    Label("Saved places", systemImage: "heart.fill")
+                    Label("Favourites", systemImage: "heart.fill")
                         .font(.headline)
                         .foregroundStyle(AppPalette.ink)
                         .frame(maxWidth: .infinity, minHeight: 68)
@@ -411,9 +414,9 @@ private struct SavedPlacesView: View {
         Group {
             if savedPlaces.places.isEmpty {
                 ContentUnavailableView(
-                    "No saved places",
+                    "No favourites yet",
                     systemImage: "heart",
-                    description: Text("Save a place from its map to find it here.")
+                    description: Text("Tap the heart on a place to add it to your favourites.")
                 )
             } else {
                 List {
@@ -446,7 +449,7 @@ private struct SavedPlacesView: View {
             }
         }
         .background(AppPalette.canvas.ignoresSafeArea())
-        .navigationTitle("Saved")
+        .navigationTitle("Favourites")
         .toolbarBackground(AppPalette.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
     }
@@ -690,6 +693,12 @@ private struct POIMapView: View {
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
+    private var mapPlaces: [PointOfInterest] {
+        places.contains(where: { $0.id == selectedPOI.id })
+            ? places
+            : places + [selectedPOI]
+    }
+
     var body: some View {
         Group {
             if coordinate != nil {
@@ -701,7 +710,7 @@ private struct POIMapView: View {
                         UserAnnotation()
                     }
 
-                    ForEach(places) { place in
+                    ForEach(mapPlaces) { place in
                         let annotation = POIAnnotationDetails(pointOfInterest: place)
                         let annotationCoordinate = CLLocationCoordinate2D(
                             latitude: annotation.latitude,
