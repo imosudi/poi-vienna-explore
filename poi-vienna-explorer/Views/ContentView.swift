@@ -328,7 +328,7 @@ private struct POIMapView: View {
 
     var body: some View {
         Group {
-            if let coordinate {
+            if coordinate != nil {
                 Map(
                     position: $mapPosition,
                     selection: $selectedAnnotation

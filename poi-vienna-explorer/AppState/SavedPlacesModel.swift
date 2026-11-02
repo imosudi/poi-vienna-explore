@@ -8,7 +8,8 @@ final class SavedPlacesModel {
     private(set) var errorMessage: String?
     private let store: SavedPOIStore
 
-    init(store: SavedPOIStore = SavedPOIStore()) {
+    init(store: SavedPOIStore? = nil) {
+        let store = store ?? SavedPOIStore()
         self.store = store
         do {
             places = try store.load()
