@@ -4,6 +4,14 @@ import Observation
 @MainActor
 @Observable
 final class CatalogueModel {
+    enum QuickFilter: String, CaseIterable, Identifiable {
+        case allPlaces = "All places"
+        case withAddress = "With address"
+        case withWebsite = "With website"
+
+        var id: String { rawValue }
+    }
+
     enum State {
         case idle
         case loading
@@ -15,7 +23,13 @@ final class CatalogueModel {
     private(set) var isRefreshing = false
     private(set) var refreshError: String?
     var searchText = ""
+    var quickFilter: QuickFilter = .allPlaces
     private let provider: any PointOfInterestProviding
+
+    var loadedPlaces: [PointOfInterest] {
+        guard case .loaded(let places) = state else { return [] }
+        return places
+    }
 
     var hasLoadedPlaces: Bool {
         if case .loaded = state { return true }
@@ -26,10 +40,19 @@ final class CatalogueModel {
         guard case .loaded(let places) = state else { return [] }
 
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return places }
-
         return places.filter { place in
-            [place.name, place.address, place.informationURL?.absoluteString]
+            let matchesFilter: Bool
+            switch quickFilter {
+            case .allPlaces:
+                matchesFilter = true
+            case .withAddress:
+                matchesFilter = place.address != nil
+            case .withWebsite:
+                matchesFilter = place.informationURL != nil
+            }
+            guard matchesFilter else { return false }
+            guard !query.isEmpty else { return true }
+            return [place.name, place.address, place.informationURL?.absoluteString]
                 .compactMap { $0 }
                 .contains { $0.localizedStandardContains(query) }
         }

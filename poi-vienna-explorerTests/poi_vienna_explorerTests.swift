@@ -250,6 +250,43 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(requestCount, 1)
     }
 
+    func testQuickFiltersUseOnlyDatasetFields() async throws {
+        let provider = CountingPOIProvider(places: [
+            PointOfInterest(
+                id: "address",
+                name: "Address only",
+                address: "Market 1",
+                informationURL: nil,
+                thumbnailURL: nil,
+                latitude: 48.2,
+                longitude: 16.3
+            ),
+            PointOfInterest(
+                id: "website",
+                name: "Website only",
+                address: nil,
+                informationURL: URL(string: "https://example.com"),
+                thumbnailURL: nil,
+                latitude: 48.2,
+                longitude: 16.3
+            ),
+            makePlace(id: "both", name: "Both", address: "Park 2")
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+
+        model.quickFilter = .withAddress
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["address", "both"])
+
+        model.quickFilter = .withWebsite
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["website"])
+
+        model.quickFilter = .allPlaces
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["address", "website", "both"])
+        XCTAssertEqual(provider.requestCount, 1)
+    }
+
     func testRefreshReplacesPlacesAfterSuccessfulFetch() async throws {
         let original = makePlace(id: "1", name: "Original")
         let updated = makePlace(id: "2", name: "Updated")
