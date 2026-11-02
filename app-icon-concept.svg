@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
+  <title id="title">Vienna POI Explorer app icon concept</title>
+  <desc id="description">A full-bleed Vienna-red map-inspired app icon with a warm-white map pin and simplified St. Stephen's Cathedral silhouette. iOS applies its rounded icon mask.</desc>
+
+  <rect width="1024" height="1024" fill="#D20A2E"/>
+
+  <g fill="none" stroke="#F5D7D8" stroke-linecap="round" stroke-linejoin="round" opacity=".22">
+    <path d="M-70 214h270l92 92h132l66-66h208l96 96h300" stroke-width="18"/>
+    <path d="M-80 782h250l94-94h138l76 76h192l94-94h330" stroke-width="18"/>
+    <path d="M158-50v190l76 76v104" stroke-width="14"/>
+    <path d="M866 768v110l-78 78v120" stroke-width="14"/>
+  </g>
+  <g fill="#F5D7D8" opacity=".34">
+    <circle cx="200" cy="214" r="13"/>
+    <circle cx="788" cy="336" r="13"/>
+    <circle cx="250" cy="782" r="13"/>
+    <circle cx="866" cy="782" r="13"/>
+  </g>
+
+  <path
+    d="M512 92c-162 0-294 132-294 294 0 204 294 546 294 546s294-342 294-546C806 224 674 92 512 92Z"
+    fill="#FFF8EA"/>
+  <circle cx="512" cy="386" r="207" fill="#D20A2E"/>
+
+  <defs>
+    <clipPath id="roof">
+      <path d="m368 430 144-76 144 76-25 18H393z"/>
+    </clipPath>
+  </defs>
+  <g fill="#FFF8EA">
+    <path d="m512 219-29 54h17l-20 34h64l-20-34h17z"/>
+    <path d="M490 307h44v91h-44z"/>
+    <path d="M482 386h60v15h-60z"/>
+    <path d="M382 440h260v101H382z"/>
+    <path d="m368 430 144-76 144 76-25 18H393z"/>
+  </g>
+  <g clip-path="url(#roof)" fill="none" stroke="#D20A2E" stroke-width="7" opacity=".8">
+    <path d="m372 402 57 57m-25-76 76 76m-43-91 91 91m-58-108 107 107m-74-125 124 124m-91-140 139 139m-107-155 156 155m-124-171 161 161"/>
+  </g>
+  <g fill="#D20A2E">
+    <path d="M405 469h24v43h-24zm67 0h24v43h-24zm67 0h24v43h-24z"/>
+    <path d="M444 542h136v9H444z"/>
+  </g>
+</svg>
