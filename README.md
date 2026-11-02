@@ -31,19 +31,43 @@ Features without a stable identifier, a non-empty name, a `Point` geometry, or f
 
 ## Screenshots
 
-### Home screen
+Screenshots are iOS captures. The list, map, and saved-favourite content may
+vary with the dataset and favourites present when the capture was made.
 
-![Home screen in landscape](screenshots/debug-screenshot.png)
+### Explore home
 
-![Home screen in portrait](screenshots/debug-screenshot-landscape.png)
+| Portrait | Landscape |
+|---|---|
+| ![Explore home in portrait](screenshots/debug-screenshot.png) | ![Explore home in landscape](screenshots/debug-screenshot_landscape.png) |
 
-### POI map
+### Places catalogue
 
-![Searchable list of POIs](screenshots/debug-screenshot-landscape_poi.png)
+| Places list | Landscape list and map |
+|---|---|
+| ![Places catalogue in portrait](screenshots/debug-screenshot_places.png) | ![Places catalogue beside the map in landscape](screenshots/debug-screenshot_places_landscape.png) |
 
-![POI map and selected place in landscape](screenshots/debug-screenshot-map-landscape.png)
+### Search results
 
-![POI map and selected place in portrait](screenshots/debug-screenshot-map.png)
+| Search in portrait | Search beside map in landscape |
+|---|---|
+| ![Places filtered by search in portrait](screenshots/debug-screenshot_search_poi.png) | ![Places filtered by search beside the map in landscape](screenshots/debug-screenshot_search_poi_landscape.png) |
 
+### Selected place on the map
+
+| Portrait | Landscape |
+|---|---|
+| ![Selected POI with map details in portrait](screenshots/debug-screenshot_poi.png) | ![Selected POI with map details in landscape](screenshots/debug-screenshot_poi_landscape.png) |
+
+### Favourites
+
+| Favourites in portrait | Favourites in landscape |
+|---|---|
+| ![Favourites list in portrait](screenshots/debug-screenshot_poi_favourites.png) | ![Favourites list in landscape](screenshots/debug-screenshot_poi_favourites_landscape.png) |
+
+### Delete confirmation
+
+| Portrait | Landscape |
+|---|---|
+| ![Delete Favourite confirmation in portrait](screenshots/debug-screenshot_favourite_delete.png) | ![Delete Favourite confirmation in landscape](screenshots/debug-screenshot_favourite_delete_landscape.png) |
 
  
