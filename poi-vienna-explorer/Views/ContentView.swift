@@ -18,6 +18,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationStack(path: $explorePath) {
                 ExploreHomeView(
+                    onBrowsePlaces: { explorePath.append(.places) },
                     onOpenSavedPlaces: { selectedTab = .saved }
                 )
                 .navigationDestination(for: ExploreRoute.self) { destination in
