@@ -101,54 +101,158 @@ private struct ExploreHomeView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let height = geometry.size.height
-            let isCompact = height < 480
-            let spacing = max(isCompact ? 6 : 8, height * (isCompact ? 0.02 : 0.03))
-
-            VStack(spacing: spacing) {
-                Image("BrandingHeaderBanner")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: height * (isCompact ? 0.18 : 0.22))
-                    .modifier(HoverGiggleEffect())
-                    .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
-
-                Button(action: onBrowsePlaces) {
-                    Image("BrandingPromoCard")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: height * (isCompact ? 0.28 : 0.36))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Browse places in Vienna")
-
-                Button(action: onOpenSavedPlaces) {
-                    Label("Favourites", systemImage: "heart.fill")
-                        .font(.headline)
-                        .foregroundStyle(AppPalette.ink)
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: max(42, height * (isCompact ? 0.1 : 0.11))
-                        )
-                        .background(.white, in: RoundedRectangle(cornerRadius: 24))
-                }
-                .buttonStyle(.plain)
-
-                Image("BrandingCityWienOpenDataBadge")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 360, maxHeight: height * (isCompact ? 0.1 : 0.13))
-                    .accessibilityLabel("City of Vienna Open Government Data")
+            if geometry.size.width > geometry.size.height {
+                landscapeHome(size: geometry.size)
+            } else {
+                portraitHome(height: geometry.size.height)
             }
-            .frame(maxWidth: 680)
-            .padding(.horizontal)
-            .padding(.vertical, max(isCompact ? 4 : 8, height * (isCompact ? 0.015 : 0.02)))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(AppPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .toolbarBackground(AppPalette.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    private func portraitHome(height: CGFloat) -> some View {
+        let isCompact = height < 480
+        let spacing = max(isCompact ? 6 : 8, height * (isCompact ? 0.02 : 0.03))
+
+        return VStack(spacing: spacing) {
+            headerBanner
+                .frame(maxHeight: height * (isCompact ? 0.18 : 0.22))
+
+            browseCard
+                .frame(maxHeight: height * (isCompact ? 0.28 : 0.36))
+
+            favouritesButton(minHeight: max(42, height * (isCompact ? 0.1 : 0.11)))
+
+            openDataBadge
+                .frame(maxHeight: height * (isCompact ? 0.1 : 0.13))
+        }
+        .frame(maxWidth: 680)
+        .padding(.horizontal)
+        .padding(.vertical, max(isCompact ? 4 : 8, height * (isCompact ? 0.015 : 0.02)))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func landscapeHome(size: CGSize) -> some View {
+        let gap = max(6, size.height * 0.025)
+        let actionHeight = max(40, size.height * 0.13)
+
+        return HStack(spacing: size.width * 0.035) {
+            VStack(spacing: size.height * 0.045) {
+                headerBanner
+                    .frame(maxHeight: size.height * 0.28)
+                browseCard
+                    .frame(maxHeight: size.height * 0.57)
+            }
+            .frame(maxWidth: size.width * 0.43, maxHeight: .infinity)
+
+            VStack(spacing: gap) {
+                landscapeSearchField
+                CatalogueFilterChips(catalogue: catalogue)
+
+                Button(action: onOpenSavedPlaces) {
+                    Label("Favourites", systemImage: "heart.fill")
+                        .font(.headline)
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(maxWidth: .infinity, minHeight: actionHeight)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 24))
+                }
+                .buttonStyle(.plain)
+
+                openDataBadge
+                    .frame(maxHeight: size.height * 0.16)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(.horizontal, size.width * 0.045)
+        .padding(.vertical, size.height * 0.025)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var headerBanner: some View {
+        Image("BrandingHeaderBanner")
+            .resizable()
+            .scaledToFit()
+            .modifier(HoverGiggleEffect())
+            .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
+    }
+
+    private var browseCard: some View {
+        Button(action: onBrowsePlaces) {
+            Image("BrandingPromoCard")
+                .resizable()
+                .scaledToFit()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Browse places in Vienna")
+    }
+
+    private func favouritesButton(minHeight: CGFloat) -> some View {
+        Button(action: onOpenSavedPlaces) {
+            Label("Favourites", systemImage: "heart.fill")
+                .font(.headline)
+                .foregroundStyle(AppPalette.ink)
+                .frame(maxWidth: .infinity, minHeight: minHeight)
+                .background(.white, in: RoundedRectangle(cornerRadius: 24))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var openDataBadge: some View {
+        Image("BrandingCityWienOpenDataBadge")
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: 360)
+            .accessibilityLabel("City of Vienna Open Government Data")
+    }
+
+    private var landscapeSearchField: some View {
+        HStack(spacing: 12) {
+            Image("IconsSearch")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
+            TextField("Name, address, or website", text: $catalogue.searchText)
+                .submitLabel(.search)
+                .onSubmit(onBrowsePlaces)
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 52)
+        .background(.white, in: Capsule())
+        .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
+    }
+}
+
+private struct CatalogueFilterChips: View {
+    @Bindable var catalogue: CatalogueModel
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(CatalogueModel.QuickFilter.allCases) { filter in
+                    Button {
+                        catalogue.quickFilter = filter
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(
+                                catalogue.quickFilter == filter ? .white : AppPalette.ink
+                            )
+                            .padding(.horizontal, 16)
+                            .frame(height: 42)
+                            .background(
+                                catalogue.quickFilter == filter ? AppPalette.accent : .white,
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .accessibilityLabel("Filter places")
     }
 }
 
@@ -183,14 +287,21 @@ private struct HoverGiggleEffect: ViewModifier {
 private struct POICatalogueView: View {
     @Bindable var catalogue: CatalogueModel
     @Bindable var savedPlaces: SavedPlacesModel
+    @State private var selectedPlaceID: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            searchField
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+        GeometryReader { geometry in
+            if geometry.size.width > geometry.size.height {
+                landscapeCatalogue(size: geometry.size)
+            } else {
+                VStack(spacing: 0) {
+                    searchField
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
 
-            catalogueContent
+                    catalogueContent
+                }
+            }
         }
         .background(AppPalette.canvas.ignoresSafeArea())
         .navigationTitle("Places")
@@ -227,6 +338,120 @@ private struct POICatalogueView: View {
             }
             .toolbarBackground(AppPalette.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    @ViewBuilder
+    private func landscapeCatalogue(size: CGSize) -> some View {
+        if case .loaded(let places) = catalogue.state {
+            HStack(spacing: 0) {
+                VStack(spacing: 8) {
+                    searchField
+                    CatalogueFilterChips(catalogue: catalogue)
+                    landscapePlaceList
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .frame(width: size.width * 0.43)
+
+                Rectangle()
+                    .fill(.quaternary)
+                    .frame(width: 1)
+
+                landscapeMapPane(places: places)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.leading, 8)
+            }
+            .background(AppPalette.canvas)
+            .onAppear {
+                if selectedPlaceID == nil {
+                    selectedPlaceID = catalogue.filteredPlaces.first?.id
+                }
+            }
+            .onChange(of: catalogue.filteredPlaces.map(\.id)) { _, visibleIDs in
+                if let selectedPlaceID, visibleIDs.contains(selectedPlaceID) {
+                    return
+                }
+                selectedPlaceID = visibleIDs.first
+            }
+        } else {
+            catalogueContent
+        }
+    }
+
+    private var landscapePlaceList: some View {
+        List(catalogue.filteredPlaces) { place in
+            HStack(spacing: 8) {
+                Button {
+                    selectedPlaceID = place.id
+                } label: {
+                    HStack(spacing: 12) {
+                        Image("IconsMapPin")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 42, height: 42)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(place.name)
+                                .font(.headline)
+                                .foregroundStyle(AppPalette.ink)
+
+                            if let address = place.address {
+                                Text(address)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                FavoritePlaceButton(place: place, savedPlaces: savedPlaces)
+            }
+            .padding(.vertical, 4)
+            .listRowBackground(
+                selectedPlaceID == place.id ? AppPalette.accent.opacity(0.08) : AppPalette.canvas
+            )
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollIndicators(.visible, axes: .vertical)
+        .refreshable {
+            await catalogue.refresh()
+        }
+    }
+
+    @ViewBuilder
+    private func landscapeMapPane(places: [PointOfInterest]) -> some View {
+        if places.isEmpty {
+            ContentUnavailableView(
+                "No places found",
+                systemImage: "map",
+                description: Text("There are no Vienna sights to show right now.")
+            )
+        } else if let selectedPlace = catalogue.filteredPlaces.first(where: {
+            $0.id == selectedPlaceID
+        }) ?? catalogue.filteredPlaces.first {
+            POIMapView(
+                selectedPOI: selectedPlace,
+                places: places,
+                savedPlaces: savedPlaces,
+                showsNavigationChrome: false
+            )
+            .id(selectedPlace.id)
+        } else {
+            ContentUnavailableView(
+                "No matching places",
+                systemImage: "line.3.horizontal.decrease.circle",
+                description: Text(
+                    catalogue.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "No places match this filter."
+                        : "Try a different search or filter."
+                )
+            )
+        }
     }
 
     private var searchField: some View {
@@ -660,6 +885,7 @@ private struct POIMapView: View {
     let selectedPOI: PointOfInterest
     let places: [PointOfInterest]
     @Bindable var savedPlaces: SavedPlacesModel
+    var showsNavigationChrome = true
     @State private var selectedAnnotation: POIAnnotationDetails?
     @StateObject private var locationService = UserLocationService()
     @State private var mapPosition: MapCameraPosition
@@ -668,11 +894,13 @@ private struct POIMapView: View {
     init(
         selectedPOI: PointOfInterest,
         places: [PointOfInterest],
-        savedPlaces: SavedPlacesModel
+        savedPlaces: SavedPlacesModel,
+        showsNavigationChrome: Bool = true
     ) {
         self.selectedPOI = selectedPOI
         self.places = places
         self.savedPlaces = savedPlaces
+        self.showsNavigationChrome = showsNavigationChrome
         _selectedAnnotation = State(
             initialValue: POIAnnotationDetails(pointOfInterest: selectedPOI)
         )
@@ -759,6 +987,13 @@ private struct POIMapView: View {
                             .accessibilityIdentifier("location-status")
                     }
                 }
+                .overlay(alignment: .topTrailing) {
+                    if !showsNavigationChrome {
+                        FavoritePlaceButton(place: selectedPOI, savedPlaces: savedPlaces)
+                            .background(.regularMaterial, in: Circle())
+                            .padding()
+                    }
+                }
                 .onAppear {
                     locationService.requestLocationWhenInUseIfNeeded()
                 }
@@ -773,28 +1008,30 @@ private struct POIMapView: View {
                 )
             }
         }
-        .navigationTitle(selectedPOI.name)
+        .navigationTitle(showsNavigationChrome ? selectedPOI.name : "Places")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    if savedPlaces.contains(selectedPOI) {
-                        isConfirmingRemoval = true
-                    } else {
-                        savedPlaces.save(selectedPOI)
+            if showsNavigationChrome {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        if savedPlaces.contains(selectedPOI) {
+                            isConfirmingRemoval = true
+                        } else {
+                            savedPlaces.save(selectedPOI)
+                        }
+                    } label: {
+                        Label(
+                            savedPlaces.contains(selectedPOI)
+                                ? "Remove Favourite"
+                                : "Add Favourite",
+                            systemImage: savedPlaces.contains(selectedPOI) ? "heart.fill" : "heart"
+                        )
                     }
-                } label: {
-                    Label(
-                        savedPlaces.contains(selectedPOI)
-                            ? "Remove Favourite"
-                            : "Add Favourite",
-                        systemImage: savedPlaces.contains(selectedPOI) ? "heart.fill" : "heart"
+                    .accessibilityLabel(
+                        savedPlaces.contains(selectedPOI) ? "Delete Favourite" : "Add Favourite"
                     )
+                    .accessibilityIdentifier("save-poi-\(selectedPOI.id)")
                 }
-                .accessibilityLabel(
-                    savedPlaces.contains(selectedPOI) ? "Delete Favourite" : "Add Favourite"
-                )
-                .accessibilityIdentifier("save-poi-\(selectedPOI.id)")
             }
         }
         .alert("Delete Favourite?", isPresented: $isConfirmingRemoval) {
