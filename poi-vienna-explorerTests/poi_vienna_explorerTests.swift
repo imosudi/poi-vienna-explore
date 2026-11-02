@@ -202,6 +202,45 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(try SavedPOIStore(fileURL: fileURL).load(), [retainedPlace])
     }
 
+    func testRemovingFavouriteUpdatesImmediatelyPersistsAndLeavesCatalogueAlone() async throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let removedPlace = makePlace(id: "source-poi", name: "Source POI")
+        let retainedPlace = makePlace(id: "other-poi", name: "Other POI")
+        let savedModel = SavedPlacesModel(store: SavedPOIStore(fileURL: fileURL))
+        savedModel.save(removedPlace)
+        savedModel.save(retainedPlace)
+        let catalogue = CatalogueModel(
+            provider: CountingPOIProvider(places: [removedPlace, retainedPlace])
+        )
+        await catalogue.loadIfNeeded()
+
+        savedModel.remove(removedPlace)
+
+        XCTAssertEqual(savedModel.places, [retainedPlace])
+        XCTAssertEqual(catalogue.loadedPlaces, [removedPlace, retainedPlace])
+        XCTAssertEqual(
+            SavedPlacesModel(store: SavedPOIStore(fileURL: fileURL)).places,
+            [retainedPlace]
+        )
+    }
+
+    func testRemovingFavouriteThatIsAlreadyAbsentKeepsOtherFavourites() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let retainedPlace = makePlace(id: "retained", name: "Retained")
+        let absentPlace = makePlace(id: "absent", name: "Absent")
+        try store.save(retainedPlace)
+        let model = SavedPlacesModel(store: store)
+
+        model.remove(absentPlace)
+
+        XCTAssertEqual(model.places, [retainedPlace])
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(try store.load(), [retainedPlace])
+    }
+
     func testSavedPOIStoreRejectsUnsupportedSchemaVersion() throws {
         let (directory, fileURL) = temporarySavedPlacesFile()
         defer { try? FileManager.default.removeItem(at: directory) }

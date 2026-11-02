@@ -440,6 +440,8 @@ private struct SavedPlacesView: View {
                             } label: {
                                 Label("Remove", systemImage: "trash")
                             }
+                            .accessibilityLabel("Remove \(place.name) from favourites")
+                            .accessibilityIdentifier("remove-favourite-\(place.id)")
                         }
                     }
                 }
