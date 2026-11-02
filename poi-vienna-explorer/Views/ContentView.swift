@@ -29,11 +29,17 @@ struct ContentView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                CopyrightFooter()
+            }
             .tabItem { Label("Explore", systemImage: "safari") }
             .tag(ExplorerTab.explore)
 
             NavigationStack {
                 AllPlacesMapView(catalogue: catalogue, savedPlaces: savedPlaces)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                CopyrightFooter()
             }
             .tabItem { Label("Map", systemImage: "map") }
             .tag(ExplorerTab.map)
@@ -43,6 +49,9 @@ struct ContentView: View {
                     savedPlaces: savedPlaces,
                     places: catalogue.loadedPlaces
                 )
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                CopyrightFooter()
             }
             .tabItem { Label("Saved", systemImage: "heart") }
             .tag(ExplorerTab.saved)
@@ -251,9 +260,6 @@ private struct POICatalogueView: View {
             }
             .toolbarBackground(AppPalette.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                CopyrightFooter()
-            }
     }
 
     private var searchField: some View {
