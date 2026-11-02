@@ -157,6 +157,22 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(try relaunchedStore.load(), [place])
     }
 
+    func testReloadReflectsChangesPersistedAfterModelInitialization() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let model = SavedPlacesModel(store: store)
+        let savedPlace = makePlace(id: "external-save", name: "Externally saved")
+
+        try store.save(savedPlace)
+        XCTAssertTrue(model.places.isEmpty)
+
+        model.reload()
+
+        XCTAssertEqual(model.places, [savedPlace])
+        XCTAssertNil(model.errorMessage)
+    }
+
     func testSavingSamePOIIdentifierDoesNotCreateDuplicate() throws {
         let (directory, fileURL) = temporarySavedPlacesFile()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -184,6 +200,45 @@ final class poi_vienna_explorerTests: XCTestCase {
 
         XCTAssertEqual(remainingPlaces, [retainedPlace])
         XCTAssertEqual(try SavedPOIStore(fileURL: fileURL).load(), [retainedPlace])
+    }
+
+    func testRemovingFavouriteUpdatesImmediatelyPersistsAndLeavesCatalogueAlone() async throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let removedPlace = makePlace(id: "source-poi", name: "Source POI")
+        let retainedPlace = makePlace(id: "other-poi", name: "Other POI")
+        let savedModel = SavedPlacesModel(store: SavedPOIStore(fileURL: fileURL))
+        savedModel.save(removedPlace)
+        savedModel.save(retainedPlace)
+        let catalogue = CatalogueModel(
+            provider: CountingPOIProvider(places: [removedPlace, retainedPlace])
+        )
+        await catalogue.loadIfNeeded()
+
+        savedModel.remove(removedPlace)
+
+        XCTAssertEqual(savedModel.places, [retainedPlace])
+        XCTAssertEqual(catalogue.loadedPlaces, [removedPlace, retainedPlace])
+        XCTAssertEqual(
+            SavedPlacesModel(store: SavedPOIStore(fileURL: fileURL)).places,
+            [retainedPlace]
+        )
+    }
+
+    func testRemovingFavouriteThatIsAlreadyAbsentKeepsOtherFavourites() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let retainedPlace = makePlace(id: "retained", name: "Retained")
+        let absentPlace = makePlace(id: "absent", name: "Absent")
+        try store.save(retainedPlace)
+        let model = SavedPlacesModel(store: store)
+
+        model.remove(absentPlace)
+
+        XCTAssertEqual(model.places, [retainedPlace])
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(try store.load(), [retainedPlace])
     }
 
     func testSavedPOIStoreRejectsUnsupportedSchemaVersion() throws {
@@ -248,6 +303,43 @@ final class poi_vienna_explorerTests: XCTestCase {
 
         let requestCount = provider.requestCount
         XCTAssertEqual(requestCount, 1)
+    }
+
+    func testQuickFiltersUseOnlyDatasetFields() async throws {
+        let provider = CountingPOIProvider(places: [
+            PointOfInterest(
+                id: "address",
+                name: "Address only",
+                address: "Market 1",
+                informationURL: nil,
+                thumbnailURL: nil,
+                latitude: 48.2,
+                longitude: 16.3
+            ),
+            PointOfInterest(
+                id: "website",
+                name: "Website only",
+                address: nil,
+                informationURL: URL(string: "https://example.com"),
+                thumbnailURL: nil,
+                latitude: 48.2,
+                longitude: 16.3
+            ),
+            makePlace(id: "both", name: "Both", address: "Park 2")
+        ])
+        let model = CatalogueModel(provider: provider)
+
+        await model.loadIfNeeded()
+
+        model.quickFilter = .withAddress
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["address", "both"])
+
+        model.quickFilter = .withWebsite
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["website"])
+
+        model.quickFilter = .allPlaces
+        XCTAssertEqual(model.filteredPlaces.map(\.id), ["address", "website", "both"])
+        XCTAssertEqual(provider.requestCount, 1)
     }
 
     func testRefreshReplacesPlacesAfterSuccessfulFetch() async throws {

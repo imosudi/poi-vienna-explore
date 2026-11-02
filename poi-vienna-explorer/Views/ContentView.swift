@@ -11,56 +11,60 @@ import SwiftUI
 struct ContentView: View {
     @State private var catalogue = CatalogueModel()
     @State private var savedPlaces = SavedPlacesModel()
+    @State private var selectedTab: ExplorerTab = .explore
+    @State private var explorePath: [ExploreRoute] = []
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    Image("BrandingHeaderBanner")
-                        .resizable()
-                        .scaledToFit()
-                        .modifier(HoverGiggleEffect())
-                        .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
-
-                    NavigationLink {
+        TabView(selection: $selectedTab) {
+            NavigationStack(path: $explorePath) {
+                ExploreHomeView(
+                    onBrowsePlaces: { explorePath.append(.places) },
+                    onOpenSavedPlaces: { selectedTab = .saved }
+                )
+                .navigationDestination(for: ExploreRoute.self) { destination in
+                    switch destination {
+                    case .places:
                         POICatalogueView(catalogue: catalogue, savedPlaces: savedPlaces)
-                    } label: {
-                        Image("BrandingPromoCard")
-                            .resizable()
-                            .scaledToFit()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Browse places in Vienna")
-
-                    NavigationLink {
-                        SavedPlacesView(savedPlaces: savedPlaces)
-                    } label: {
-                        Label("Saved places", systemImage: "heart.fill")
-                            .frame(maxWidth: 280)
-                    }
-                    .buttonStyle(.bordered)
-
-                    Image("BrandingCityWienOpenDataBadge")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 360)
-                        .accessibilityLabel("City of Vienna Open Government Data")
                 }
-                .frame(maxWidth: 680)
-                .padding()
             }
-            .navigationTitle("Explore Vienna")
-            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 CopyrightFooter()
             }
+            .tabItem { Label("Explore", systemImage: "safari") }
+            .tag(ExplorerTab.explore)
+
+            NavigationStack {
+                AllPlacesMapView(catalogue: catalogue, savedPlaces: savedPlaces)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                CopyrightFooter()
+            }
+            .tabItem { Label("Map", systemImage: "map") }
+            .tag(ExplorerTab.map)
+
+            NavigationStack {
+                SavedPlacesView(
+                    savedPlaces: savedPlaces,
+                    places: catalogue.loadedPlaces,
+                    onBackToExplore: { selectedTab = .explore }
+                )
+                .onAppear {
+                    savedPlaces.reload()
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                CopyrightFooter()
+            }
+            .tabItem { Label("Favourites", systemImage: "heart") }
+            .tag(ExplorerTab.saved)
         }
+        .tint(AppPalette.accent)
         .task {
             await catalogue.loadIfNeeded()
         }
         .alert(
-            "Saved places",
+            "Favourites",
             isPresented: Binding(
                 get: { savedPlaces.errorMessage != nil },
                 set: { if !$0 { savedPlaces.clearError() } }
@@ -72,6 +76,79 @@ struct ContentView: View {
         } message: {
             Text(savedPlaces.errorMessage ?? "An unknown persistence error occurred.")
         }
+    }
+}
+
+private enum ExplorerTab: Hashable {
+    case explore
+    case map
+    case saved
+}
+
+private enum ExploreRoute: Hashable {
+    case places
+}
+
+private enum AppPalette {
+    static let canvas = Color(red: 0.98, green: 0.97, blue: 0.95)
+    static let ink = Color(red: 0.08, green: 0.15, blue: 0.29)
+    static let accent = Color(red: 0.82, green: 0.04, blue: 0.16)
+}
+
+private struct ExploreHomeView: View {
+    let onBrowsePlaces: () -> Void
+    let onOpenSavedPlaces: () -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            let height = geometry.size.height
+            let isCompact = height < 480
+            let spacing = max(isCompact ? 6 : 8, height * (isCompact ? 0.02 : 0.03))
+
+            VStack(spacing: spacing) {
+                Image("BrandingHeaderBanner")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: height * (isCompact ? 0.18 : 0.22))
+                    .modifier(HoverGiggleEffect())
+                    .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
+
+                Button(action: onBrowsePlaces) {
+                    Image("BrandingPromoCard")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: height * (isCompact ? 0.28 : 0.36))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Browse places in Vienna")
+
+                Button(action: onOpenSavedPlaces) {
+                    Label("Favourites", systemImage: "heart.fill")
+                        .font(.headline)
+                        .foregroundStyle(AppPalette.ink)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: max(42, height * (isCompact ? 0.1 : 0.11))
+                        )
+                        .background(.white, in: RoundedRectangle(cornerRadius: 24))
+                }
+                .buttonStyle(.plain)
+
+                Image("BrandingCityWienOpenDataBadge")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 360, maxHeight: height * (isCompact ? 0.1 : 0.13))
+                    .accessibilityLabel("City of Vienna Open Government Data")
+            }
+            .frame(maxWidth: 680)
+            .padding(.horizontal)
+            .padding(.vertical, max(isCompact ? 4 : 8, height * (isCompact ? 0.015 : 0.02)))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(AppPalette.canvas.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbarBackground(AppPalette.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 }
 
@@ -108,11 +185,28 @@ private struct POICatalogueView: View {
     @Bindable var savedPlaces: SavedPlacesModel
 
     var body: some View {
-        catalogueContent
-            .navigationTitle("Vienna sights")
-            .searchable(text: $catalogue.searchText, prompt: "Name, address, or website")
+        VStack(spacing: 0) {
+            searchField
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+
+            catalogueContent
+        }
+        .background(AppPalette.canvas.ignoresSafeArea())
+        .navigationTitle("Places")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .principal) {
+                    Text("Places")
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(AppPalette.ink)
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Image("BrandingAppIcon")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 38, height: 38)
+                        .accessibilityHidden(true)
+
                     Button {
                         Task {
                             await catalogue.refresh()
@@ -122,24 +216,33 @@ private struct POICatalogueView: View {
                             ProgressView()
                                 .accessibilityLabel("Refreshing places")
                         } else {
-                            Label {
-                                Text("Refresh")
-                            } icon: {
-                                Image("IconsRefresh")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 18, height: 18)
-                            }
+                            Image("IconsRefresh")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 22, height: 22)
                         }
                     }
                     .disabled(catalogue.isRefreshing || !catalogue.hasLoadedPlaces)
                 }
             }
-            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+            .toolbarBackground(AppPalette.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                CopyrightFooter()
-            }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 12) {
+            Image("IconsSearch")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
+
+            TextField("Name, address, or website", text: $catalogue.searchText)
+                .submitLabel(.search)
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 58)
+        .background(.white, in: Capsule())
+        .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
     }
 
     @ViewBuilder
@@ -166,32 +269,60 @@ private struct POICatalogueView: View {
                         description: Text("There are no Vienna sights to show right now.")
                     )
                 } else if catalogue.filteredPlaces.isEmpty {
-                    ContentUnavailableView.search(text: catalogue.searchText)
+                    if catalogue.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        ContentUnavailableView(
+                            "No matching places",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text(
+                                catalogue.quickFilter == .withAddress
+                                    ? "No places with an address are available."
+                                    : "No places with an information website are available."
+                            )
+                        )
+                    } else {
+                        ContentUnavailableView.search(text: catalogue.searchText)
+                    }
                 } else {
                     List(catalogue.filteredPlaces) { place in
-                        NavigationLink {
-                            POIMapView(
-                                selectedPOI: place,
-                                places: places,
-                                savedPlaces: savedPlaces
-                            )
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(place.name)
-                                    .font(.headline)
+                        HStack(spacing: 10) {
+                            NavigationLink {
+                                POIMapView(
+                                    selectedPOI: place,
+                                    places: places,
+                                    savedPlaces: savedPlaces
+                                )
+                            } label: {
+                                HStack(spacing: 14) {
+                                    Image("IconsMapPin")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 52, height: 52)
 
-                                if let address = place.address {
-                                    Label(address, systemImage: "mappin")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(place.name)
+                                            .font(.headline)
+                                            .foregroundStyle(AppPalette.ink)
+
+                                        if let address = place.address {
+                                            Text(address)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 }
+                                .contentShape(Rectangle())
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+
+                            FavoritePlaceButton(place: place, savedPlaces: savedPlaces)
                         }
                         .padding(.vertical, 6)
+                        .listRowBackground(AppPalette.canvas)
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .scrollIndicators(.visible, axes: .vertical)
                     .refreshable {
                         await catalogue.refresh()
@@ -215,16 +346,54 @@ private struct POICatalogueView: View {
     }
 }
 
+private struct FavoritePlaceButton: View {
+    let place: PointOfInterest
+    @Bindable var savedPlaces: SavedPlacesModel
+    @State private var isConfirmingRemoval = false
+
+    var body: some View {
+        Button {
+            if savedPlaces.contains(place) {
+                isConfirmingRemoval = true
+            } else {
+                savedPlaces.save(place)
+            }
+        } label: {
+            Image(systemName: savedPlaces.contains(place) ? "heart.fill" : "heart")
+                .font(.title3)
+                .foregroundStyle(savedPlaces.contains(place) ? AppPalette.accent : .secondary)
+                .frame(width: 44, height: 48)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            savedPlaces.contains(place) ? "Delete Favourite" : "Add Favourite"
+        )
+        .accessibilityIdentifier("save-poi-\(place.id)")
+        .alert("Delete Favourite?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Favourite", role: .destructive) {
+                savedPlaces.remove(place)
+            }
+        } message: {
+            Text("This removes \(place.name) from Favourites only. It will remain in the places catalogue.")
+        }
+    }
+}
+
 private struct SavedPlacesView: View {
     @Bindable var savedPlaces: SavedPlacesModel
+    let places: [PointOfInterest]
+    let onBackToExplore: () -> Void
+    @State private var placePendingDeletion: PointOfInterest?
 
     var body: some View {
         Group {
             if savedPlaces.places.isEmpty {
                 ContentUnavailableView(
-                    "No saved places",
+                    "No favourites yet",
                     systemImage: "heart",
-                    description: Text("Save a place from its map to find it here.")
+                    description: Text("Tap the heart on a place to add it to your favourites.")
                 )
             } else {
                 List {
@@ -232,36 +401,244 @@ private struct SavedPlacesView: View {
                         NavigationLink {
                             POIMapView(
                                 selectedPOI: place,
-                                places: savedPlaces.places,
+                                places: places.isEmpty ? savedPlaces.places : places,
                                 savedPlaces: savedPlaces
                             )
                         } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(place.name)
-                                    .font(.headline)
-
-                                if let address = place.address {
-                                    Label(address, systemImage: "mappin")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
+                            PlaceRow(
+                                place: place,
+                                places: places,
+                                savedPlaces: savedPlaces
+                            )
                         }
                         .swipeActions {
-                            Button(role: .destructive) {
-                                savedPlaces.remove(place)
+                            Button {
+                                placePendingDeletion = place
                             } label: {
-                                Label("Remove", systemImage: "trash")
+                                Label("Delete Favourite", systemImage: "trash")
                             }
+                            .tint(.red)
+                            .accessibilityLabel("Delete \(place.name) from Favourites")
+                            .accessibilityIdentifier("remove-favourite-\(place.id)")
                         }
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(AppPalette.canvas)
             }
         }
-        .navigationTitle("Saved places")
-        .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+        .background(AppPalette.canvas.ignoresSafeArea())
+        .navigationTitle("Favourites")
+        .toolbarBackground(AppPalette.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: onBackToExplore) {
+                    Label("Back", systemImage: "chevron.left")
+                }
+                .accessibilityIdentifier("back-to-explore")
+            }
+        }
+        .alert(
+            "Delete Favourite?",
+            isPresented: Binding(
+                get: { placePendingDeletion != nil },
+                set: { if !$0 { placePendingDeletion = nil } }
+            )
+        ) {
+            Button("Cancel", role: .cancel) {
+                placePendingDeletion = nil
+            }
+            Button("Delete Favourite", role: .destructive) {
+                if let placePendingDeletion {
+                    savedPlaces.remove(placePendingDeletion)
+                }
+                placePendingDeletion = nil
+            }
+        } message: {
+            Text(
+                "This removes \(placePendingDeletion?.name ?? "this place") from Favourites only. "
+                    + "It will remain in the places catalogue."
+            )
+        }
+    }
+}
+
+private struct PlaceRow: View {
+    let place: PointOfInterest
+    let places: [PointOfInterest]
+    @Bindable var savedPlaces: SavedPlacesModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            NavigationLink {
+                POIMapView(
+                    selectedPOI: place,
+                    places: places.isEmpty ? savedPlaces.places : places,
+                    savedPlaces: savedPlaces
+                )
+            } label: {
+                HStack(spacing: 14) {
+                    Image("IconsMapPin")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 52, height: 52)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(place.name)
+                            .font(.headline)
+                            .foregroundStyle(AppPalette.ink)
+
+                        if let address = place.address {
+                            Text(address)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            FavoritePlaceButton(place: place, savedPlaces: savedPlaces)
+        }
+        .padding(.vertical, 6)
+        .listRowBackground(AppPalette.canvas)
+    }
+}
+
+private struct AllPlacesMapView: View {
+    @Bindable var catalogue: CatalogueModel
+    @Bindable var savedPlaces: SavedPlacesModel
+
+    var body: some View {
+        Group {
+            switch catalogue.state {
+            case .idle, .loading:
+                ProgressView("Loading places")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .failed(let message):
+                ContentUnavailableView {
+                    Label("Places could not be loaded", systemImage: "wifi.exclamationmark")
+                } description: {
+                    Text(message)
+                }
+            case .loaded(let places) where places.isEmpty:
+                ContentUnavailableView("No places found", systemImage: "map")
+            case .loaded(let places):
+                AllPOIMap(places: places, savedPlaces: savedPlaces)
+            }
+        }
+        .background(AppPalette.canvas.ignoresSafeArea())
+        .navigationTitle("Map")
+        .toolbarBackground(AppPalette.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+    }
+}
+
+private struct AllPOIMap: View {
+    let places: [PointOfInterest]
+    @Bindable var savedPlaces: SavedPlacesModel
+    @State private var selectedAnnotation: POIAnnotationDetails?
+    @State private var mapPosition: MapCameraPosition
+    @StateObject private var locationService = UserLocationService()
+
+    init(places: [PointOfInterest], savedPlaces: SavedPlacesModel) {
+        self.places = places
+        self.savedPlaces = savedPlaces
+        let initialPosition: MapCameraPosition
+        if let place = places.first {
+            initialPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: place.latitude,
+                        longitude: place.longitude
+                    ),
+                    span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+                )
+            )
+        } else {
+            initialPosition = .automatic
+        }
+        _mapPosition = State(initialValue: initialPosition)
+    }
+
+    var body: some View {
+        Map(position: $mapPosition, selection: $selectedAnnotation) {
+            if locationService.isAuthorized {
+                UserAnnotation()
+            }
+
+            ForEach(places) { place in
+                let details = POIAnnotationDetails(pointOfInterest: place)
+                let distance = distanceText(to: place)
+                let markerStyle = POIMarkerStyle(pointOfInterest: place)
+                let isSelected = selectedAnnotation?.id == place.id
+
+                Annotation(
+                    place.name,
+                    coordinate: CLLocationCoordinate2D(
+                        latitude: place.latitude,
+                        longitude: place.longitude
+                    ),
+                    anchor: .bottom
+                ) {
+                    POIMapAnnotationView(
+                        details: details,
+                        markerStyle: markerStyle,
+                        isSelected: isSelected,
+                        distanceText: distance
+                    )
+                }
+                .annotationTitles(.hidden)
+                .tag(details)
+            }
+        }
+        .overlay(alignment: .top) {
+            if let message = locationService.statusMessage {
+                Text(message)
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding()
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if let selectedPlace {
+                FavoritePlaceButton(place: selectedPlace, savedPlaces: savedPlaces)
+                    .background(.regularMaterial, in: Circle())
+                    .padding()
+                    .padding(.top, 44)
+            }
+        }
+        .onAppear {
+            locationService.requestLocationWhenInUseIfNeeded()
+        }
+        .onDisappear {
+            locationService.stopUpdatingLocation()
+        }
+    }
+
+    private var selectedPlace: PointOfInterest? {
+        guard let id = selectedAnnotation?.id else { return nil }
+        return places.first(where: { $0.id == id })
+    }
+
+    private func distanceText(to place: PointOfInterest) -> String? {
+        guard let location = locationService.location,
+              let meters = POIDistanceCalculator.distanceMeters(
+                from: location.coordinate,
+                to: place
+              )
+        else {
+            return nil
+        }
+        return POIDistanceFormatter.formattedDistance(meters: meters)
     }
 }
 
@@ -273,7 +650,7 @@ private struct CopyrightFooter: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background {
-                Color(uiColor: .systemBackground)
+                AppPalette.canvas
                     .ignoresSafeArea(edges: .bottom)
             }
     }
@@ -286,6 +663,7 @@ private struct POIMapView: View {
     @State private var selectedAnnotation: POIAnnotationDetails?
     @StateObject private var locationService = UserLocationService()
     @State private var mapPosition: MapCameraPosition
+    @State private var isConfirmingRemoval = false
 
     init(
         selectedPOI: PointOfInterest,
@@ -326,9 +704,15 @@ private struct POIMapView: View {
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
+    private var mapPlaces: [PointOfInterest] {
+        places.contains(where: { $0.id == selectedPOI.id })
+            ? places
+            : places + [selectedPOI]
+    }
+
     var body: some View {
         Group {
-            if let coordinate {
+            if coordinate != nil {
                 Map(
                     position: $mapPosition,
                     selection: $selectedAnnotation
@@ -337,7 +721,7 @@ private struct POIMapView: View {
                         UserAnnotation()
                     }
 
-                    ForEach(places) { place in
+                    ForEach(mapPlaces) { place in
                         let annotation = POIAnnotationDetails(pointOfInterest: place)
                         let annotationCoordinate = CLLocationCoordinate2D(
                             latitude: annotation.latitude,
@@ -395,18 +779,34 @@ private struct POIMapView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     if savedPlaces.contains(selectedPOI) {
-                        savedPlaces.remove(selectedPOI)
+                        isConfirmingRemoval = true
                     } else {
                         savedPlaces.save(selectedPOI)
                     }
                 } label: {
                     Label(
-                        savedPlaces.contains(selectedPOI) ? "Remove saved place" : "Save place",
+                        savedPlaces.contains(selectedPOI)
+                            ? "Remove Favourite"
+                            : "Add Favourite",
                         systemImage: savedPlaces.contains(selectedPOI) ? "heart.fill" : "heart"
                     )
                 }
+                .accessibilityLabel(
+                    savedPlaces.contains(selectedPOI) ? "Delete Favourite" : "Add Favourite"
+                )
                 .accessibilityIdentifier("save-poi-\(selectedPOI.id)")
             }
+        }
+        .alert("Delete Favourite?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Favourite", role: .destructive) {
+                savedPlaces.remove(selectedPOI)
+            }
+        } message: {
+            Text(
+                "This removes \(selectedPOI.name) from Favourites only. "
+                    + "It will remain in the places catalogue."
+            )
         }
         .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
