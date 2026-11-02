@@ -18,8 +18,6 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationStack(path: $explorePath) {
                 ExploreHomeView(
-                    catalogue: catalogue,
-                    onBrowsePlaces: { explorePath.append(.places) },
                     onOpenSavedPlaces: { selectedTab = .saved }
                 )
                 .navigationDestination(for: ExploreRoute.self) { destination in
@@ -96,26 +94,28 @@ private enum AppPalette {
 }
 
 private struct ExploreHomeView: View {
-    @Bindable var catalogue: CatalogueModel
     let onBrowsePlaces: () -> Void
     let onOpenSavedPlaces: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 22) {
+        GeometryReader { geometry in
+            let height = geometry.size.height
+            let isCompact = height < 480
+            let spacing = max(isCompact ? 6 : 8, height * (isCompact ? 0.02 : 0.03))
+
+            VStack(spacing: spacing) {
                 Image("BrandingHeaderBanner")
                     .resizable()
                     .scaledToFit()
+                    .frame(maxHeight: height * (isCompact ? 0.18 : 0.22))
                     .modifier(HoverGiggleEffect())
                     .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
-
-                searchField
-                quickFilters
 
                 Button(action: onBrowsePlaces) {
                     Image("BrandingPromoCard")
                         .resizable()
                         .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: height * (isCompact ? 0.28 : 0.36))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Browse places in Vienna")
@@ -124,7 +124,10 @@ private struct ExploreHomeView: View {
                     Label("Favourites", systemImage: "heart.fill")
                         .font(.headline)
                         .foregroundStyle(AppPalette.ink)
-                        .frame(maxWidth: .infinity, minHeight: 68)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: max(42, height * (isCompact ? 0.1 : 0.11))
+                        )
                         .background(.white, in: RoundedRectangle(cornerRadius: 24))
                 }
                 .buttonStyle(.plain)
@@ -132,59 +135,18 @@ private struct ExploreHomeView: View {
                 Image("BrandingCityWienOpenDataBadge")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: 360, maxHeight: height * (isCompact ? 0.1 : 0.13))
                     .accessibilityLabel("City of Vienna Open Government Data")
             }
             .frame(maxWidth: 680)
-            .padding()
+            .padding(.horizontal)
+            .padding(.vertical, max(isCompact ? 4 : 8, height * (isCompact ? 0.015 : 0.02)))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(AppPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .toolbarBackground(AppPalette.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 12) {
-            Image("IconsSearch")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 24, height: 24)
-
-            TextField("Name, address, or website", text: $catalogue.searchText)
-                .submitLabel(.search)
-                .onSubmit(onBrowsePlaces)
-        }
-        .padding(.horizontal, 20)
-        .frame(height: 60)
-        .background(.white, in: Capsule())
-        .shadow(color: .black.opacity(0.06), radius: 14, y: 6)
-    }
-
-    private var quickFilters: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(CatalogueModel.QuickFilter.allCases) { filter in
-                    Button {
-                        catalogue.quickFilter = filter
-                    } label: {
-                        Text(filter.rawValue)
-                            .font(.headline)
-                            .foregroundStyle(
-                                catalogue.quickFilter == filter ? .white : AppPalette.ink
-                            )
-                            .padding(.horizontal, 20)
-                            .frame(height: 46)
-                            .background(
-                                catalogue.quickFilter == filter ? AppPalette.accent : .white,
-                                in: Capsule()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .accessibilityLabel("Filter places")
     }
 }
 
