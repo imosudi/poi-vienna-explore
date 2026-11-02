@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 
-struct PointOfInterest: Identifiable, Hashable, Sendable {
+struct PointOfInterest: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let name: String
     let address: String?

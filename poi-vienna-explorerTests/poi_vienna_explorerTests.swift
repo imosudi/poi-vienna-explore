@@ -137,6 +137,69 @@ final class poi_vienna_explorerTests: XCTestCase {
         XCTAssertEqual(POIDistanceFormatter.formattedDistance(meters: -1), nil)
     }
 
+    func testSavedPOIIsAvailableFromANewStoreInstance() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let place = PointOfInterest(
+            id: "SEHENSWUERDIGOGD.640963",
+            name: "Ankeruhr",
+            address: "Hoher Markt 10/",
+            informationURL: URL(string: "https://example.com/ankeruhr"),
+            thumbnailURL: URL(string: "https://example.com/ankeruhr.jpg"),
+            latitude: 48.21076056,
+            longitude: 16.37367575
+        )
+
+        try store.save(place)
+        let relaunchedStore = SavedPOIStore(fileURL: fileURL)
+
+        XCTAssertEqual(try relaunchedStore.load(), [place])
+    }
+
+    func testSavingSamePOIIdentifierDoesNotCreateDuplicate() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let original = makePlace(id: "stable-id", name: "Original")
+        let updated = makePlace(id: "stable-id", name: "Updated")
+
+        try store.save(original)
+        let savedPlaces = try store.save(updated)
+
+        XCTAssertEqual(savedPlaces.count, 1)
+        XCTAssertEqual(savedPlaces.first?.name, "Original")
+    }
+
+    func testRemovingSavedPOIDeletesItFromPersistentStore() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SavedPOIStore(fileURL: fileURL)
+        let removedPlace = makePlace(id: "remove", name: "Remove")
+        let retainedPlace = makePlace(id: "retain", name: "Retain")
+        try store.save(removedPlace)
+        try store.save(retainedPlace)
+
+        let remainingPlaces = try store.remove(id: removedPlace.id)
+
+        XCTAssertEqual(remainingPlaces, [retainedPlace])
+        XCTAssertEqual(try SavedPOIStore(fileURL: fileURL).load(), [retainedPlace])
+    }
+
+    func testSavedPOIStoreRejectsUnsupportedSchemaVersion() throws {
+        let (directory, fileURL) = temporarySavedPlacesFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        try Data(#"{"schemaVersion":99,"places":[]}"#.utf8).write(to: fileURL)
+
+        XCTAssertThrowsError(try SavedPOIStore(fileURL: fileURL).load()) { error in
+            XCTAssertEqual(error as? SavedPOIStoreError, .unsupportedSchema(99))
+        }
+    }
+
     func testDuplicateIdentifiersProduceOnlyOnePlace() async throws {
         let duplicatedFeature = try XCTUnwrap(
             String(data: sourceFixture(), encoding: .utf8)
@@ -477,6 +540,12 @@ final class poi_vienna_explorerTests: XCTestCase {
             latitude: 48.2,
             longitude: 16.3
         )
+    }
+
+    private func temporarySavedPlacesFile() -> (directory: URL, file: URL) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("POIExplorerTests-\(UUID().uuidString)", isDirectory: true)
+        return (directory, directory.appendingPathComponent("SavedPOIs.json"))
     }
 
     @MainActor

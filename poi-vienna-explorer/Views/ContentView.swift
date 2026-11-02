@@ -10,6 +10,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var catalogue = CatalogueModel()
+    @State private var savedPlaces = SavedPlacesModel()
 
     var body: some View {
         NavigationStack {
@@ -22,7 +23,7 @@ struct ContentView: View {
                         .accessibilityLabel("Vienna POI Explorer. Discover. Explore. Save.")
 
                     NavigationLink {
-                        POICatalogueView(catalogue: catalogue)
+                        POICatalogueView(catalogue: catalogue, savedPlaces: savedPlaces)
                     } label: {
                         Image("BrandingPromoCard")
                             .resizable()
@@ -30,6 +31,14 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Browse places in Vienna")
+
+                    NavigationLink {
+                        SavedPlacesView(savedPlaces: savedPlaces)
+                    } label: {
+                        Label("Saved places", systemImage: "heart.fill")
+                            .frame(maxWidth: 280)
+                    }
+                    .buttonStyle(.bordered)
 
                     Image("BrandingCityWienOpenDataBadge")
                         .resizable()
@@ -49,6 +58,19 @@ struct ContentView: View {
         }
         .task {
             await catalogue.loadIfNeeded()
+        }
+        .alert(
+            "Saved places",
+            isPresented: Binding(
+                get: { savedPlaces.errorMessage != nil },
+                set: { if !$0 { savedPlaces.clearError() } }
+            )
+        ) {
+            Button("OK") {
+                savedPlaces.clearError()
+            }
+        } message: {
+            Text(savedPlaces.errorMessage ?? "An unknown persistence error occurred.")
         }
     }
 }
@@ -83,6 +105,7 @@ private struct HoverGiggleEffect: ViewModifier {
 
 private struct POICatalogueView: View {
     @Bindable var catalogue: CatalogueModel
+    @Bindable var savedPlaces: SavedPlacesModel
 
     var body: some View {
         catalogueContent
@@ -147,7 +170,11 @@ private struct POICatalogueView: View {
                 } else {
                     List(catalogue.filteredPlaces) { place in
                         NavigationLink {
-                            POIMapView(selectedPOI: place, places: places)
+                            POIMapView(
+                                selectedPOI: place,
+                                places: places,
+                                savedPlaces: savedPlaces
+                            )
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(place.name)
@@ -188,6 +215,56 @@ private struct POICatalogueView: View {
     }
 }
 
+private struct SavedPlacesView: View {
+    @Bindable var savedPlaces: SavedPlacesModel
+
+    var body: some View {
+        Group {
+            if savedPlaces.places.isEmpty {
+                ContentUnavailableView(
+                    "No saved places",
+                    systemImage: "heart",
+                    description: Text("Save a place from its map to find it here.")
+                )
+            } else {
+                List {
+                    ForEach(savedPlaces.places) { place in
+                        NavigationLink {
+                            POIMapView(
+                                selectedPOI: place,
+                                places: savedPlaces.places,
+                                savedPlaces: savedPlaces
+                            )
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(place.name)
+                                    .font(.headline)
+
+                                if let address = place.address {
+                                    Label(address, systemImage: "mappin")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                savedPlaces.remove(place)
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Saved places")
+        .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+    }
+}
+
 private struct CopyrightFooter: View {
     var body: some View {
         Text("Mosudi Isiaka O., FHTW © 2026")
@@ -205,13 +282,19 @@ private struct CopyrightFooter: View {
 private struct POIMapView: View {
     let selectedPOI: PointOfInterest
     let places: [PointOfInterest]
+    @Bindable var savedPlaces: SavedPlacesModel
     @State private var selectedAnnotation: POIAnnotationDetails?
     @StateObject private var locationService = UserLocationService()
     @State private var mapPosition: MapCameraPosition
 
-    init(selectedPOI: PointOfInterest, places: [PointOfInterest]) {
+    init(
+        selectedPOI: PointOfInterest,
+        places: [PointOfInterest],
+        savedPlaces: SavedPlacesModel
+    ) {
         self.selectedPOI = selectedPOI
         self.places = places
+        self.savedPlaces = savedPlaces
         _selectedAnnotation = State(
             initialValue: POIAnnotationDetails(pointOfInterest: selectedPOI)
         )
@@ -308,6 +391,23 @@ private struct POIMapView: View {
         }
         .navigationTitle(selectedPOI.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    if savedPlaces.contains(selectedPOI) {
+                        savedPlaces.remove(selectedPOI)
+                    } else {
+                        savedPlaces.save(selectedPOI)
+                    }
+                } label: {
+                    Label(
+                        savedPlaces.contains(selectedPOI) ? "Remove saved place" : "Save place",
+                        systemImage: savedPlaces.contains(selectedPOI) ? "heart.fill" : "heart"
+                    )
+                }
+                .accessibilityIdentifier("save-poi-\(selectedPOI.id)")
+            }
+        }
         .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
     }
