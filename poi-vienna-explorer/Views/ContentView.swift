@@ -364,7 +364,9 @@ private struct FavoritePlaceButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(savedPlaces.contains(place) ? "Remove saved place" : "Save place")
+        .accessibilityLabel(
+            savedPlaces.contains(place) ? "Remove Favourite" : "Add Favourite"
+        )
         .accessibilityIdentifier("save-poi-\(place.id)")
     }
 }
@@ -401,9 +403,9 @@ private struct SavedPlacesView: View {
                             Button(role: .destructive) {
                                 savedPlaces.remove(place)
                             } label: {
-                                Label("Remove", systemImage: "trash")
+                                Label("Remove Favourite", systemImage: "trash")
                             }
-                            .accessibilityLabel("Remove \(place.name) from favourites")
+                            .accessibilityLabel("Remove \(place.name) from Favourites")
                             .accessibilityIdentifier("remove-favourite-\(place.id)")
                         }
                     }
@@ -739,10 +741,15 @@ private struct POIMapView: View {
                     }
                 } label: {
                     Label(
-                        savedPlaces.contains(selectedPOI) ? "Remove saved place" : "Save place",
+                        savedPlaces.contains(selectedPOI)
+                            ? "Remove Favourite"
+                            : "Add Favourite",
                         systemImage: savedPlaces.contains(selectedPOI) ? "heart.fill" : "heart"
                     )
                 }
+                .accessibilityLabel(
+                    savedPlaces.contains(selectedPOI) ? "Remove Favourite" : "Add Favourite"
+                )
                 .accessibilityIdentifier("save-poi-\(selectedPOI.id)")
             }
         }
