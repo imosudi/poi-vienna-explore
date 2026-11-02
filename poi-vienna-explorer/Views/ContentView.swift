@@ -18,6 +18,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationStack(path: $explorePath) {
                 ExploreHomeView(
+                    catalogue: catalogue,
                     onBrowsePlaces: { explorePath.append(.places) },
                     onOpenSavedPlaces: { selectedTab = .saved }
                 )
@@ -96,6 +97,7 @@ private enum AppPalette {
 }
 
 private struct ExploreHomeView: View {
+    @Bindable var catalogue: CatalogueModel
     let onBrowsePlaces: () -> Void
     let onOpenSavedPlaces: () -> Void
 
