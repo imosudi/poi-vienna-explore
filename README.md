@@ -79,4 +79,8 @@ Captured on the iOS simulator. What's shown in the list, map, and Favourites ref
 |---|---|
 | ![Delete Favourite confirmation in portrait](screenshots/debug-screenshot_favourite_delete.png) | ![Delete Favourite confirmation in landscape](screenshots/debug-screenshot_favourite_delete_landscape.png) |
 
- 
+## Author
+
+This iOS app and associated architectural artefacts are published under the open-source BSD 3-Clause Licence. Refer to the [LICENSE](https://github.com/imosudi/poi-vienna-explore/blob/main/LICENSE) file for comprehensive legal terms.
+
+Copyright (c) 2026, Isiaka Mosudi, FHTW. All rights reserved.
